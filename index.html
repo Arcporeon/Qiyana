@@ -1,0 +1,1465 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Qiyana build planner: pick your role and the enemy five to get runes, item order, counter-buys and a game plan from Master+ data.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<meta name="theme-color" content="#0e1513" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#edf2ee" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-title" content="Qiyana">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Qiyana Counterbuild</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap">
+<style>
+/* Layout: draft column (role, gold state, enemy five) beside the build sheet; one column on phones, draft first. */
+:root{
+  --bg:#0e1513; --panel:#141e1b; --panel-2:#1b2824; --line:#26362f; --line-2:#34473f;
+  --ink:#e7eee9; --ink-2:#a6b6ae; --ink-3:#74877e;
+  --gold:#d8b15a; --gold-ink:#1a1405;
+  --brush:#74c26b; --river:#5aa9d9; --rock:#c2a57a;
+  --good:#62c58f; --warn:#e3b350; --bad:#ee7966;
+  --ad:#efa262; --ap:#8f9df6;
+  --shadow:0 22px 48px -28px rgba(0,0,0,.75);
+  --f-display:"Syne","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --f-body:"Instrument Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --f-mono:"Spline Sans Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#edf2ee; --panel:#ffffff; --panel-2:#e3eae5; --line:#cbd7d0; --line-2:#b3c3ba;
+    --ink:#11201a; --ink-2:#455950; --ink-3:#687d73;
+    --gold:#8a6510; --gold-ink:#fffaf0;
+    --brush:#2e8a39; --river:#1b6ea3; --rock:#7d6236;
+    --good:#1c8651; --warn:#9b6f06; --bad:#c13f2d;
+    --ad:#b45d1a; --ap:#4651c4;
+    --shadow:0 22px 48px -30px rgba(20,40,30,.4);
+    color-scheme:light;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#edf2ee; --panel:#ffffff; --panel-2:#e3eae5; --line:#cbd7d0; --line-2:#b3c3ba;
+  --ink:#11201a; --ink-2:#455950; --ink-3:#687d73;
+  --gold:#8a6510; --gold-ink:#fffaf0;
+  --brush:#2e8a39; --river:#1b6ea3; --rock:#7d6236;
+  --good:#1c8651; --warn:#9b6f06; --bad:#c13f2d;
+  --ad:#b45d1a; --ap:#4651c4;
+  --shadow:0 22px 48px -30px rgba(20,40,30,.4);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+[hidden]{display:none!important}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 56px}
+.muted{color:var(--ink-3)}
+.flat{margin:0}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px}
+.brand{display:flex;gap:14px;align-items:center;min-width:0}
+.mark{width:40px;height:40px;flex:none}
+.mark .b{fill:var(--brush)} .mark .r{fill:var(--river)} .mark .k{fill:var(--rock)}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,5.4vw,40px);line-height:1.02;letter-spacing:-.015em;margin:0;text-wrap:balance}
+.sub{margin:6px 0 0;color:var(--ink-2);max-width:60ch;font-size:14.5px}
+.stamp{display:flex;flex-wrap:wrap;gap:6px;margin:0;font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2)}
+.stamp span{border:1px solid var(--line-2);border-radius:999px;padding:4px 9px;white-space:nowrap}
+.strata{display:grid;gap:3px;margin:16px 0 14px}
+.strata i{display:block;height:3px;border-radius:2px}
+.strata i:nth-child(1){background:var(--brush)}
+.strata i:nth-child(2){background:var(--river);width:68%}
+.strata i:nth-child(3){background:var(--rock);width:36%}
+.benchline{margin:0 0 24px;font-size:13px;color:var(--ink-2);max-width:80ch}
+.benchline b{color:var(--ink);font-weight:600}
+
+/* layout */
+.layout{display:grid;gap:28px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:940px){
+  .layout{grid-template-columns:350px minmax(0,1fr);align-items:start}
+  .draft{position:sticky;top:calc(env(safe-area-inset-top,0px) + 14px);max-height:calc(100vh - 28px);overflow-y:auto;overscroll-behavior:contain;padding-right:4px}
+}
+.draft{display:grid;gap:18px;min-width:0}
+.ctl{display:grid;gap:8px}
+.lbl{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.lblrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lblrow .link{margin-left:auto}
+.tag{font-size:11.5px;color:var(--gold);border:1px dashed var(--gold);border-radius:999px;padding:2px 8px}
+.link{background:none;border:0;padding:4px 2px;color:var(--ink-2);text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-size:13px}
+.link:hover{color:var(--ink)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;padding:4px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line)}
+.seg button{border:0;background:transparent;color:var(--ink-2);border-radius:9px;padding:9px 6px;font-weight:600;font-size:14.5px;cursor:pointer;display:grid;gap:1px;justify-items:center;line-height:1.2}
+.seg button small{font-family:var(--f-mono);font-weight:400;font-size:10.5px;opacity:.8}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-checked="true"]{background:var(--gold);color:var(--gold-ink)}
+.slots{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.slot{width:100%;display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;min-height:58px}
+.slot:hover{border-color:var(--line-2)}
+.slot .pos{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.slot .who{min-width:0;display:grid}
+.slot .nm{font-weight:600;font-size:16px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot .meta{font-size:12.5px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot.empty .nm{color:var(--ink-3);font-weight:500}
+.slot.opp{border-color:var(--gold)}
+.slot.opp .pos{color:var(--gold)}
+
+/* readout */
+.readout{display:grid;gap:10px;padding-top:4px}
+.split{display:flex;height:10px;border-radius:6px;overflow:hidden;background:var(--panel-2)}
+.split .ad{background:var(--ad)} .split .ap{background:var(--ap)}
+.splitlbl{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.splitlbl b{font-weight:600}
+.splitlbl .a{color:var(--ad)} .splitlbl .p{color:var(--ap)}
+.counts{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;line-height:1.1;padding:5px 9px;border-radius:999px;border:1px solid var(--line-2);color:var(--ink-2);white-space:nowrap}
+.chip b{color:var(--ink);font-family:var(--f-mono);font-weight:600}
+.chip.hot{border-color:color-mix(in srgb,var(--warn) 60%,transparent);color:var(--warn)}
+.chip.hot b{color:var(--warn)}
+
+/* build card */
+.sheet{min-width:0}
+.buildcard{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:var(--shadow)}
+.cardhead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h2{font-family:var(--f-display);font-weight:700;font-size:19px;letter-spacing:.005em;margin:0;text-wrap:balance}
+.btn{border:1px solid var(--line-2);background:var(--panel-2);border-radius:10px;padding:8px 12px;font-weight:600;font-size:13.5px;cursor:pointer}
+.btn:hover{border-color:var(--gold)}
+.btn.ghost{background:transparent}
+.pathname{margin:12px 0 0;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.pathname b{font-family:var(--f-display);font-weight:700;font-size:16px;color:var(--gold)}
+.pathname span{font-family:var(--f-mono);font-size:12px;color:var(--ink-2)}
+.lede{margin:8px 0 0;color:var(--ink-2);max-width:68ch}
+.chain{list-style:none;margin:14px 0 0;padding:0}
+.chain li{display:grid;grid-template-columns:24px 42px minmax(0,1fr);gap:12px;align-items:start;padding:12px 0;border-top:1px solid var(--line)}
+.chain li:first-child{border-top:0}
+.chain .num{font-family:var(--f-display);font-weight:800;font-size:17px;color:var(--gold);line-height:42px;text-align:right;font-variant-numeric:tabular-nums}
+.glyph{width:42px;height:42px;border-radius:10px;display:grid;place-items:center;font-family:var(--f-mono);font-size:12px;font-weight:600;color:var(--ink);background:color-mix(in srgb,var(--k) 20%,var(--panel-2));border:1px solid color-mix(in srgb,var(--k) 60%,transparent)}
+.k-leth{--k:var(--gold)} .k-pen{--k:var(--rock)} .k-def{--k:var(--river)} .k-util{--k:var(--brush)} .k-boot{--k:var(--ink-3)}
+.iname{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.iname b{font-size:16px;font-weight:600}
+.badge{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.badge.ctr{color:var(--brush)} .badge.core{color:var(--gold)}
+.why{margin:3px 0 0;font-size:13.5px;color:var(--ink-2)}
+.early{display:grid;gap:6px;margin-top:6px}
+.early p{margin:0;font-size:13.5px;color:var(--ink-2);padding-left:12px;border-left:2px solid var(--line-2)}
+.early p b{color:var(--ink);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0 0;font-size:12px;color:var(--ink-3)}
+.lg{display:inline-flex;align-items:center;gap:6px}
+.lg::before{content:"";width:10px;height:10px;border-radius:3px;background:color-mix(in srgb,var(--k) 35%,var(--panel-2));border:1px solid var(--k)}
+.copytext{width:100%;margin-top:12px;min-height:120px;font:12.5px/1.45 var(--f-mono);color:var(--ink);background:var(--bg);border:1px solid var(--line-2);border-radius:10px;padding:10px}
+
+/* sections */
+.sec{margin-top:26px;padding-top:22px;border-top:1px solid var(--line)}
+.sec>h2{margin-bottom:6px}
+.sec>.intro{margin:0 0 12px;color:var(--ink-2);font-size:13.5px;max-width:70ch}
+.two{display:grid;gap:26px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:700px){.two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.two h2{margin-bottom:12px}
+.swaps{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.swaps li{display:grid;grid-template-columns:10px minmax(0,1fr);gap:12px}
+.swaps .dot{width:10px;height:10px;border-radius:50%;margin-top:6px;background:var(--k)}
+.swaps b{font-weight:600}
+.swaps p{margin:2px 0 0;color:var(--ink-2);font-size:13.5px}
+
+/* path options */
+.paths{list-style:none;margin:0;padding:0;display:grid}
+.paths li{border-top:1px solid var(--line);border-left:2px solid transparent}
+.paths li:first-child{border-top:0}
+.paths li.on{border-left-color:var(--gold);background:color-mix(in srgb,var(--gold) 7%,transparent)}
+.pbtn{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;width:100%;text-align:left;background:none;border:0;border-radius:0;padding:11px 10px 11px 12px;cursor:pointer;color:inherit;font:inherit}
+.pbtn:hover .pn{color:var(--gold)}
+.paths .pn{font-weight:600}
+.paths .pn small{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-left:8px;font-weight:500}
+.paths .seq{grid-column:1/-1;font-size:13.5px;color:var(--ink)}
+.paths .when{grid-column:1/-1;font-size:13px;color:var(--ink-2)}
+.paths .when i{font-style:normal;color:var(--ink-3)}
+.paths .wr{align-self:start}
+.swaps li.note{display:block;color:var(--ink-3);font-size:13.5px}
+.lane .lnote{margin:0;font-size:13px;color:var(--ink-2)}
+.erows .note,.readout .note{margin:0;font-size:13.5px;color:var(--ink-3)}
+
+/* runes */
+.rtree{display:grid;gap:4px;margin-bottom:12px}
+.rtree .tname{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:2px}
+.rune{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 10px;align-items:baseline;padding:5px 0;border-bottom:1px dashed var(--line)}
+.rune span:first-child{font-weight:500}
+.rune.key span:first-child{font-family:var(--f-display);font-weight:700;color:var(--gold);font-size:16px}
+.rune small{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-3);text-align:right;font-variant-numeric:tabular-nums;margin-left:auto}
+.rnote{margin:6px 0 0;font-size:13px;color:var(--ink-2)}
+
+/* kit */
+.kv{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px 12px;margin:0}
+.kv dt{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding-top:3px}
+.kv dd{margin:0;min-width:0}
+.kv dd small{display:block;color:var(--ink-3);font-family:var(--f-mono);font-size:11.5px}
+.skills{display:grid;grid-template-columns:repeat(18,minmax(0,1fr));gap:2px;margin-top:4px}
+.skills span{display:grid;place-items:center;height:24px;border-radius:5px;background:var(--panel-2);font-family:var(--f-mono);font-size:11px;font-weight:600;color:var(--ink-2)}
+.skills span.R{background:var(--gold);color:var(--gold-ink)}
+.skills span.Q{color:var(--ink)}
+
+/* enemy read */
+.erows{display:grid}
+.erow{display:grid;gap:6px;padding:12px 0;border-top:1px solid var(--line)}
+.erow:first-child{border-top:0;padding-top:0}
+.ehead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.ehead b{font-size:16px}
+.ehead .pos{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.etags{display:flex;flex-wrap:wrap;gap:5px}
+.etags .chip{font-size:11.5px;padding:4px 8px}
+.elem{font-size:13.5px;color:var(--ink-2);display:flex;gap:8px;align-items:baseline}
+.elem i{flex:none;width:9px;height:9px;border-radius:2px;transform:rotate(45deg);background:var(--k);position:relative;top:-1px}
+.elem b{color:var(--ink);font-weight:600}
+.e-brush{--k:var(--brush)} .e-river{--k:var(--river)} .e-rock{--k:var(--rock)}
+.etip{margin:0;font-size:13.5px;color:var(--ink)}
+
+/* matchup */
+.lane{display:grid;gap:10px;padding:16px;border-radius:14px;background:var(--panel-2)}
+.lane .row{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.lane .big{font-family:var(--f-mono);font-size:34px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.verdict{font-weight:600}
+.good{color:var(--good)} .bad{color:var(--bad)} .even{color:var(--ink-2)}
+.meter{position:relative;height:8px;border-radius:4px;background:linear-gradient(90deg,color-mix(in srgb,var(--bad) 55%,transparent),color-mix(in srgb,var(--line-2) 80%,transparent) 50%,color-mix(in srgb,var(--good) 55%,transparent))}
+.meter .mid{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--ink-3)}
+.meter .pin{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;background:var(--ink);border:2px solid var(--bg);transform:translate(-50%,-50%)}
+.mscale{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11px;color:var(--ink-3)}
+.mlists{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-top:18px}
+.mlist h3{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:500;margin:0 0 6px}
+.mlist ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.mlist li{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px dashed var(--line);font-size:14px}
+.mlist li.on{font-weight:600}
+.mlist li.on span:first-child::after{content:" · in this game";font-weight:400;color:var(--gold);font-size:12px}
+.wr{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:12.5px;white-space:nowrap}
+.wr small{color:var(--ink-3);font-size:11px;margin-left:6px}
+
+/* combos */
+.combos{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.combos li{display:grid;gap:4px}
+.keys{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.kbd{font-family:var(--f-mono);font-size:12px;font-weight:600;min-width:26px;height:26px;padding:0 6px;display:inline-grid;place-items:center;border-radius:6px;background:var(--panel-2);border:1px solid var(--line-2);color:var(--ink)}
+.kbd.R{background:var(--gold);color:var(--gold-ink);border-color:var(--gold)}
+.keys .arr{color:var(--ink-3);font-size:12px}
+.combos .cn{font-weight:600}
+.combos p{margin:0;font-size:13.5px;color:var(--ink-2)}
+.mech{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:8px}
+.mech li{padding-left:14px;border-left:2px solid var(--line-2);color:var(--ink-2);font-size:14px}
+.mech li b{color:var(--ink);font-weight:600}
+
+/* plan, bench, numbers */
+.plan{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.plan li{padding-left:14px;border-left:2px solid var(--line-2);color:var(--ink-2);font-size:14px}
+.plan li b{color:var(--ink);font-weight:600}
+.bench{display:grid;gap:12px 20px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.bench div{border-top:2px solid var(--gold);padding-top:8px}
+.bench b{display:block;font-size:15.5px}
+.bench span{display:block;font-size:13px;color:var(--ink-2)}
+.bench .wr{font-size:13px;color:var(--ink)}
+.numbers summary{list-style:none;display:flex;align-items:baseline;gap:12px;cursor:pointer}
+.numbers summary::-webkit-details-marker{display:none}
+.numbers summary h2{display:inline}
+.numbers summary::after{content:"+";font-family:var(--f-mono);color:var(--ink-3);margin-left:auto;font-size:18px}
+.numbers[open] summary::after{content:"–"}
+.hint{font-size:12.5px;color:var(--ink-3)}
+.numbers[open] .hint{display:none}
+.tscroll{overflow-x:auto;margin-top:14px}
+.tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:420px}
+.tbl caption{text-align:left;font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);padding-bottom:6px}
+.tbl th,.tbl td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.tbl th{font-weight:500;color:var(--ink-3);font-size:12px}
+.tbl td.n,.tbl th.n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.foot{font-size:12.5px;color:var(--ink-3);margin:10px 0 0;max-width:72ch}
+.src{font-size:12.5px;color:var(--ink-3)}
+.src h2{font-size:15px;margin-bottom:8px;color:var(--ink-2)}
+.src ul{margin:0;padding-left:18px;display:grid;gap:3px}
+.src a{color:var(--ink-2)}
+
+/* picker */
+.picker{position:fixed;inset:0;z-index:50;display:grid;place-items:end center;background:color-mix(in srgb,var(--bg) 60%,transparent);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.picker .panel{width:min(560px,100%);height:min(86vh,760px);display:grid;grid-template-rows:auto auto auto minmax(0,1fr) auto;gap:10px;background:var(--panel);border:1px solid var(--line);border-bottom:0;border-radius:20px 20px 0 0;box-shadow:var(--shadow);padding:16px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+@media (min-width:720px){.picker{place-items:center}.picker .panel{border-radius:20px;border-bottom:1px solid var(--line);padding:18px}}
+.phead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.search{width:100%;font:16px var(--f-body);padding:12px 14px;border-radius:12px;border:1px solid var(--line-2);background:var(--bg);color:var(--ink)}
+.pchips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.pchips button{border:1px solid var(--line-2);background:transparent;color:var(--ink-2);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;white-space:nowrap}
+.pchips button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.plist{overflow-y:auto;overscroll-behavior:contain;display:grid;align-content:start;gap:1px;margin:0 -6px;padding:0 6px}
+.pitem{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;border:0;background:transparent;border-radius:10px;padding:10px;cursor:pointer}
+.pitem:hover,.pitem.cur{background:var(--panel-2)}
+.pitem .pn{font-weight:600;font-size:15px}
+.pitem .pm{display:block;font-size:12px;color:var(--ink-3)}
+.pitem[disabled]{opacity:.42;cursor:not-allowed}
+.pempty{padding:20px 6px;color:var(--ink-3)}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:10px;font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;z-index:60;max-width:calc(100% - 32px)}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path class="b" d="M20 2 30 12 20 22 10 12Z"/><path class="r" d="M20 9 30 19 20 29 10 19Z" opacity=".92"/><path class="k" d="M20 16 30 26 20 36 10 26Z" opacity=".92"/></svg>
+      <div>
+        <h1>Qiyana Counterbuild</h1>
+        <p class="sub">Pick your role and the enemy five. Runes, item path and counter-buys come from Master+ Qiyana games, 26.20 pro builds and Challenger-written guides.</p>
+      </div>
+    </div>
+    <p class="stamp"><span>Patch 26.20</span><span>Master+ · all regions</span><span>Pulled Oct 19, 2026</span></p>
+  </header>
+  <div class="strata" aria-hidden="true"><i></i><i></i><i></i></div>
+  <p class="benchline" id="benchline"></p>
+
+  <main class="layout">
+    <section class="draft" aria-labelledby="draftH">
+      <h2 id="draftH" class="vh">Draft</h2>
+      <div class="ctl">
+        <span class="lbl" id="roleL">Your role</span>
+        <div class="seg" id="roleSeg" role="radiogroup" aria-labelledby="roleL">
+          <button type="button" role="radio" id="role-jungle" data-v="jungle">Jungle<small>Master+ 50.5% WR</small></button>
+          <button type="button" role="radio" id="role-mid" data-v="mid">Mid<small>Master+ 52.6% WR</small></button>
+        </div>
+      </div>
+      <div class="ctl">
+        <span class="lbl" id="stateL">Gold state</span>
+        <div class="seg" id="stateSeg" role="radiogroup" aria-labelledby="stateL">
+          <button type="button" role="radio" id="st-behind" data-v="behind">Behind</button>
+          <button type="button" role="radio" id="st-even" data-v="even">Even</button>
+          <button type="button" role="radio" id="st-ahead" data-v="ahead">Ahead</button>
+        </div>
+      </div>
+      <div class="ctl">
+        <div class="lblrow"><span class="lbl">Enemy team</span><span class="tag" id="exTag">Example comp</span><button type="button" class="link" id="clearAll">Clear all</button></div>
+        <ol class="slots" id="slots"></ol>
+      </div>
+      <div class="readout" id="readout" aria-live="polite"></div>
+    </section>
+
+    <section class="sheet" aria-label="Build">
+      <article class="buildcard">
+        <div class="cardhead"><h2>Item order</h2><button type="button" class="btn" id="copyBtn">Copy build</button></div>
+        <p class="pathname" id="pathname"></p>
+        <p class="lede" id="lede"></p>
+        <ol class="chain" id="chain"></ol>
+        <div class="early" id="early"></div>
+        <textarea id="copyText" class="copytext" readonly hidden aria-label="Build as text"></textarea>
+        <p class="legend"><span class="lg k-leth">Lethality</span><span class="lg k-pen">Armor pen</span><span class="lg k-def">Defense</span><span class="lg k-util">Counter utility</span><span class="lg k-boot">Boots</span></p>
+      </article>
+      <section class="sec"><h2>Other paths top players use</h2><p class="intro">Every first-three-item route with real Master+ volume this patch, plus one pro route. The highlighted one is what this comp calls for. Tap a route to pin it and build the rest around it; tap it again to go back to auto.</p><ul class="paths" id="paths"></ul></section>
+      <section class="sec"><h2>Swaps this comp triggers</h2><ul class="swaps" id="swaps"></ul></section>
+      <section class="sec two">
+        <div><h2>Runes</h2><div id="runes"></div></div>
+        <div><h2>Start, spells, skills</h2><div id="kit"></div></div>
+      </section>
+      <section class="sec"><h2>Enemy read</h2><div class="erows" id="enemies"></div></section>
+      <section class="sec"><h2>Matchup data</h2><div id="matchup"></div></section>
+      <section class="sec"><h2>Combos and mechanics</h2><ul class="combos" id="combos"></ul><ul class="mech" id="mech"></ul></section>
+      <section class="sec"><h2>Game plan</h2><ul class="plan" id="plan"></ul></section>
+      <section class="sec"><h2>Benchmarked against</h2><p class="intro" id="benchIntro"></p><div class="bench" id="bench"></div></section>
+      <details class="sec numbers" id="numbersBox"><summary><h2>Patch 26.20 numbers</h2><span class="hint">Every win rate this page uses</span></summary><div id="numbers"></div></details>
+      <footer class="sec src" id="sources"></footer>
+    </section>
+  </main>
+</div>
+
+<div class="picker" id="picker" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="pickTitle">
+    <div class="phead"><h2 id="pickTitle">Pick enemy</h2><button type="button" class="btn ghost" id="pickClose">Done</button></div>
+    <input id="pickSearch" class="search" type="search" placeholder="Search: tf, j4, mundo, kog…" autocomplete="off" spellcheck="false" aria-label="Search champions">
+    <div class="pchips" id="pickChips" role="group" aria-label="Filter by role"></div>
+    <div class="plist" id="pickList"></div>
+    <button type="button" class="link" id="pickClear">Clear this slot</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+/* ===== DATA: patch 26.20 (game version 16.20). Master+ (all regions) unless marked Emerald+. Pulled Oct 19, 2026. ===== */
+const ITEMS = {
+  voltaic:{n:"Voltaic Cyclosword",ab:"VC",k:"leth",d:"25 lethality, the most of any item, plus a current-health damage proc. Bought in 90% of Master+ jungle Qiyana games."},
+  bastion:{n:"Bastionbreaker",ab:"BB",k:"leth",d:"55 AD, 22 lethality, 15 haste. Your first ability hit deals bonus true damage, and a takedown arms Sabotage: the next hit on a tower or epic monster within 90 seconds deals big true damage."},
+  eon:{n:"Edge of Night",ab:"EN",k:"def",d:"Lethality, health and a spell shield that blocks one ability, including reveals like Kai'Sa W and Lee Sin Q."},
+  serylda:{n:"Serylda's Grudge",ab:"SG",k:"pen",d:"45 AD, 35% armor pen, 15 haste; abilities slow targets under 50% HP. Fatality item, so it can't pair with Lord Dominik's."},
+  ldr:{n:"Lord Dominik's Regards",ab:"LD",k:"pen",d:"35 AD, 35% armor pen, 25% crit, plus Giant Slayer (back since patch 26.1): up to 15% more damage to targets with bonus health, maxed at 1,500. Fatality item."},
+  profane:{n:"Profane Hydra",ab:"PH",k:"leth",d:"Lethality and cleave. The active hits everything around you and cancels animations (W → Hydra)."},
+  hubris:{n:"Hubris",ab:"HB",k:"leth",d:"60 AD, the most of any lethality item. Eminence gives bonus AD on every champion takedown, and the bonus grows with each one."},
+  umbral:{n:"Umbral Glaive",ab:"UG",k:"leth",d:"60 AD, 18 lethality, 15 haste. Nightstalker: after 1 second unseen, your next attack on a champion deals 50 + 1.5 per lethality true damage. Blackout disables nearby wards when they spot you."},
+  serpent:{n:"Serpent's Fang",ab:"SF",k:"util",d:"2,500 gold: 55 AD, 15 lethality. Damage venoms a champion for 3 seconds: shields they have and gain are cut by 50% (you're melee). Q and R are AoE, so one cast can venom several targets."},
+  axiom:{n:"Axiom Arc",ab:"AX",k:"leth",d:"Lethality and haste; takedowns refund part of your ult cooldown."},
+  youmuu:{n:"Youmuu's Ghostblade",ab:"YG",k:"leth",d:"Lethality and bonus move speed for roams and chases."},
+  dd:{n:"Death's Dance",ab:"DD",k:"def",d:"AD, armor and haste. Spreads burst damage over time and cleanses the rest on a takedown."},
+  ga:{n:"Guardian Angel",ab:"GA",k:"def",d:"AD and armor with a revive on a long cooldown."},
+  maw:{n:"Maw of Malmortius",ab:"MM",k:"def",d:"AD and magic resist plus a magic-damage shield when you drop low."},
+  endless:{n:"Endless Hunger",ab:"EH",k:"def",d:"3,100 gold: 65 AD, 5% omnivamp, 20% tenacity; haste from bonus AD and extra omnivamp after kills."},
+  mercurial:{n:"Mercurial Scimitar",ab:"MS",k:"def",d:"50 AD, 35 MR, 10% lifesteal; the active removes all CC except knock-ups."},
+  chempunk:{n:"Chempunk Chainsword",ab:"CC",k:"util",d:"45 AD, 450 HP, 15 haste; physical damage applies Grievous Wounds."},
+  exec:{n:"Executioner's Calling",ab:"EX",k:"util",d:"Cheap Grievous Wounds component."},
+  qss:{n:"Quicksilver Sash",ab:"QS",k:"def",d:"30 MR; the active removes all CC except knock-ups."},
+  dirk:{n:"Serrated Dirk",ab:"SD",k:"leth",d:"20 AD, 10 lethality component."}
+};
+const BOOTS = {
+  ionian:{n:"Ionian Boots of Lucidity",ab:"IB",t3:"Crimson Lucidity",d:"Ability haste and summoner spell haste."},
+  glutton:{n:"Gluttonous Greaves",ab:"GG",t3:"Immortal Path",d:"45 move speed, 4% omnivamp, plus 0.6% per takedown (10 stacks)."},
+  mercury:{n:"Mercury's Treads",ab:"MT",t3:"Chainlaced Crushers",d:"Magic resist and tenacity."},
+  steel:{n:"Plated Steelcaps",ab:"PS",t3:"Armored Advance",d:"Armor and less damage from basic attacks."},
+  swift:{n:"Boots of Swiftness",ab:"BS",t3:"Swiftmarch",d:"Move speed and slow resist."}
+};
+
+/* items lists: [key, pick %, games, win %] */
+const STATS = {
+  jungle:{
+    label:"Jungle",wr:50.54,pr:9.91,br:35.27,games:34600,ewr:48.73,epr:7.34,ebr:14.76,egames:126078,
+    boots:[["ionian",77.75,19779,51.63],["mercury",11.15,2836,54.76],["steel",6.70,1704,53.29],["glutton",2.49,633,59.87],["swift",1.90,483,58.18]],
+    start:[["Gustwalker Hatchling + Health Potion",29.33,9863,48.96],["Gustwalker Hatchling",24.89,8370,50.69],["Scorchclaw Pup + Health Potion",21.56,7249,50.27],["Scorchclaw Pup",20.36,6846,51.67],["Mosstomper Seedling",2.32,779,54.94]],
+    spells:{a:"Flash",b:"Smite",pr:99.91,g:33772,wr:50.43},
+    skill:{seq:"QWEQQRQWQWWRWEEERE",pr:45.84,g:9951,wr:56.57},
+    keys:[["First Strike","Inspiration",92.34,31961,50.49],["Electrocute","Domination",2.46,852,51.06]],
+    slot4:[["axiom",61.71,692],["serylda",59.86,4180],["eon",58.44,4355],["ldr",57.00,2835],["serpent",55.40,2334]],
+    slot5:[["ga",66.12,2258],["serylda",60.03,608],["dd",57.34,518],["serpent",56.01,823],["eon",54.42,871]],
+    slot6:[["youmuu",57.79,244],["ga",62.07,203],["serpent",66.00,50],["eon",51.02,49],["dd",67.39,46]],
+    items:[["voltaic",90.37,30696,51.14],["bastion",83.86,28485,51.77],["eon",44.45,15099,56.31],["serylda",25.85,8781,56.21],["serpent",24.40,8289,52.26],["ldr",20.43,6939,54.33],["axiom",9.60,3261,56.79],["umbral",9.13,3100,51.55],["ga",8.71,2960,65.61],["hubris",7.32,2486,51.13],["profane",6.36,2160,50.56],["dd",4.14,1407,58.42],["maw",1.69,575,62.26],["youmuu",1.61,548,57.85],["endless",0.89,302,62.25],["exec",0.82,277,36.82],["chempunk",0.13,45,53.33]],
+    cores:[
+      {i:["voltaic","bastion","eon"],pr:18.12,g:4841,wr:56.17},
+      {i:["dirk","bastion","voltaic","eon"],pr:8.76,g:2342,wr:54.87},
+      {i:["voltaic","bastion","serylda"],pr:6.95,g:1858,wr:52.80},
+      {i:["voltaic","bastion","ldr"],pr:6.40,g:1710,wr:51.99},
+      {i:["voltaic","bastion","serpent"],pr:5.92,g:1582,wr:51.33},
+      {i:["bastion","voltaic","eon"],pr:4.07,g:1087,wr:58.42},
+      {i:["dirk","bastion","voltaic","serylda"],pr:2.96,g:791,wr:52.47},
+      {i:["dirk","bastion","voltaic","serpent"],pr:2.96,g:790,wr:53.04},
+      {i:["dirk","bastion","voltaic","ldr"],pr:2.89,g:771,wr:50.71},
+      {i:["voltaic","bastion","axiom"],pr:2.45,g:654,wr:59.33},
+      {i:["bastion","voltaic","serpent"],pr:1.79,g:479,wr:53.65},
+      {i:["hubris","voltaic","bastion"],pr:1.74,g:466,wr:58.15},
+      {i:["umbral","bastion","voltaic"],pr:1.59,g:424,wr:57.31},
+      {i:["bastion","voltaic","ldr"],pr:1.59,g:425,wr:55.53},
+      {i:["bastion","voltaic","serylda"],pr:1.49,g:397,wr:56.68}
+    ]
+  },
+  mid:{
+    label:"Mid",wr:52.59,pr:2.99,br:34.32,games:10600,ewr:49.38,epr:2.77,ebr:14.67,egames:48310,
+    boots:[["ionian",51.40,5033,52.35],["glutton",26.87,2631,56.86],["mercury",15.03,1472,50.95],["steel",5.43,532,52.63],["swift",1.26,123,56.10]],
+    start:[["Doran's Blade + Health Potion",85.78,8819,53.26],["Long Sword + Refillable Potion",6.86,705,46.95],["Doran's Shield + Health Potion",3.66,376,48.94]],
+    spells:{a:"Flash",b:"Ignite",pr:97.26,g:10076,wr:52.49},
+    skill:{seq:"WQEQQRQWQWRWWEEREE",pr:74.55,g:4301,wr:61.61},
+    keys:[["Electrocute","Domination",65.49,6932,52.67],["Conqueror","Precision",24.76,2621,53.72]],
+    slot4:[["eon",60.14,725],["serylda",61.43,669],["dd",58.61,447],["serpent",55.22,431],["ldr",60.43,235]],
+    slot5:[["ga",67.31,156],["dd",49.66,149],["eon",63.12,141],["serpent",58.24,91],["endless",70.27,74]],
+    slot6:[],
+    items:[["voltaic",73.32,7638,53.50],["profane",52.25,5443,53.17],["bastion",34.42,3586,55.63],["serylda",32.84,3421,58.17],["serpent",24.17,2518,53.02],["hubris",21.95,2287,53.04],["eon",15.96,1663,59.71],["ldr",12.13,1264,55.30],["dd",6.97,726,57.30],["umbral",4.82,502,54.18],["maw",3.85,401,57.36],["axiom",3.51,366,57.92],["endless",2.80,292,64.73],["ga",2.16,225,72.00],["exec",1.29,134,41.79],["youmuu",1.22,127,58.27]],
+    cores:[
+      {i:["profane","voltaic","serylda"],pr:8.41,g:589,wr:57.89},
+      {i:["voltaic","bastion","serylda"],pr:7.90,g:553,wr:58.05},
+      {i:["voltaic","profane","serylda"],pr:4.86,g:340,wr:55.88},
+      {i:["voltaic","bastion","ldr"],pr:4.01,g:281,wr:54.45},
+      {i:["voltaic","bastion","eon"],pr:3.27,g:229,wr:58.95},
+      {i:["profane","voltaic","bastion"],pr:2.83,g:198,wr:58.59},
+      {i:["profane","voltaic","serpent"],pr:2.83,g:198,wr:48.99},
+      {i:["hubris","voltaic","serylda"],pr:2.80,g:196,wr:55.61},
+      {i:["voltaic","bastion","serpent"],pr:2.77,g:194,wr:53.61},
+      {i:["hubris","profane","serylda"],pr:2.59,g:181,wr:58.01},
+      {i:["profane","voltaic","ldr"],pr:2.39,g:167,wr:59.88},
+      {i:["profane","serpent","serylda"],pr:2.37,g:166,wr:61.45},
+      {i:["profane","voltaic","eon"],pr:1.34,g:94,wr:65.96},
+      {i:["voltaic","profane","serpent"],pr:1.34,g:94,wr:60.64},
+      {i:["voltaic","profane","ldr"],pr:1.27,g:89,wr:53.93}
+    ]
+  }
+};
+
+/* Master+ minor-rune splits: [name, pick %, games, win %] */
+const RSTAT = {
+  jungle:{
+    inspo:[["Cash Back",56.3,19559,52.1],["Magical Footwear",36.8,12781,48.1]],
+    tonic:["Triple Tonic",93.0,32297,50.5],cosmic:["Cosmic Insight",92.7,32216,50.5],
+    impact:["Sudden Impact",92.5,32131,50.5],
+    hunter:[["Treasure Hunter",39.1,13576,52.0],["Ultimate Hunter",52.9,18374,49.4]],
+    shard:[["Health",31.8,11028,51.7],["Health Scaling",67.2,23339,49.9]]
+  },
+  mid:{
+    impact:["Sudden Impact",72.8,7730,52.3],
+    eye:[["Sixth Sense",18.2,1934,54.2],["Grisly Mementos",53.7,5702,51.6]],
+    hunter:[["Ultimate Hunter",9.6,1020,56.1],["Treasure Hunter",60.6,6440,51.7]],
+    pom:["Presence of Mind",63.0,6696,52.7],
+    last:[["Last Stand",57.5,6106,52.5],["Cut Down",5.4,569,55.4]],
+    shard:[["Health",58.3,6193,53.1],["Health Scaling",40.7,4322,52.2]]
+  }
+};
+
+/* Route catalog. Each is a first-three-item path with Master+ volume or a 26.20 pro example. */
+const PATHS = {
+  jungle:[
+    {id:"j_std",name:"Standard",i:["voltaic","bastion","eon"],wr:56.17,g:4841,when:"Default for an even game. The most-played Master+ jungle core."},
+    {id:"j_bb",name:"Bastionbreaker first",i:["bastion","voltaic","eon"],wr:58.42,g:1087,when:"Ahead or a big first back. Sabotage turns each kill into plates, grubs or a dragon."},
+    {id:"j_hub",name:"Hubris snowball",i:["hubris","voltaic","bastion"],wr:58.15,g:466,when:"Ahead into three or more squishies with almost no frontline."},
+    {id:"j_umb",name:"Brush hunter",i:["umbral","bastion","voltaic"],wr:57.31,g:424,when:"Even game into immobile carries you can reach from fog or brush. Nightstalker adds true damage on your opener."},
+    {id:"j_ax",name:"Teamfight resets",i:["voltaic","bastion","axiom"],wr:59.33,g:654,when:"Four or more squishies and no tanks: every takedown hands your ult back."},
+    {id:"j_sf",name:"Shield break",i:["voltaic","serpent","bastion"],wr:53.65,g:479,pro:"Yike at Worlds: Voltaic → Serpent's → Bastionbreaker into Milio and Rumble",when:"Two or more real shielders, like an enchanter plus Karma, Seraphine or Orianna."},
+    {id:"j_ldr",name:"Tank shred",i:["bastion","voltaic","ldr"],wr:55.53,g:425,when:"Two or more tanks or health stackers. Giant Slayer is back on Lord Dominik's this year."},
+    {id:"j_eon2",name:"Catch-proof",i:["voltaic","eon","bastion"],pro:"Roach (KR): Edge of Night second into Galio, Gnar and Seraphine",when:"Three or more catch tools (hooks, point-click CC), or two when you're behind."}
+  ],
+  mid:[
+    {id:"m_std",name:"Standard",i:["voltaic","bastion","serylda"],wr:58.05,g:553,when:"Default into assassins and skirmishers. Burst plus the slow."},
+    {id:"m_prof",name:"Profane waveclear",i:["profane","voltaic","serylda"],wr:57.89,g:589,when:"The most-played Master+ mid core. Into push mages, bruiser lanes (with Conqueror) and grouped teams; W → Hydra cancels animations."},
+    {id:"m_eon",name:"Catch-proof",i:["voltaic","bastion","eon"],wr:58.95,g:229,when:"Two or more catch tools (hooks, point-click CC, reveals)."},
+    {id:"m_hub",name:"Hubris snowball",i:["hubris","profane","serylda"],wr:58.01,g:181,when:"Ahead into a squishy team. Buy Gluttonous early and rush Hubris before upgrading boots."},
+    {id:"m_obj",name:"Objective snowball",i:["profane","voltaic","bastion"],wr:58.59,g:198,when:"Ahead into a team with some frontline. Bastionbreaker third turns kills into towers."},
+    {id:"m_sf",name:"Shield break",i:["profane","serpent","serylda"],wr:61.45,g:166,when:"Two or more real shielders. The best-performing mid core with enough games."},
+    {id:"m_ldr",name:"Tank shred",i:["profane","voltaic","ldr"],wr:59.88,g:167,when:"Two or more tanks or health stackers."}
+  ]
+};
+
+/* Lane-opponent win rates for Qiyana: [opponent, Qiyana win %, games]. MM = Master+, ME = Emerald+. */
+const MATCH_M = {
+  jungle:[["Lee Sin",49.25,2782],["Talon",48.93,1357],["Graves",52.70,1239],["Kha'Zix",53.50,1172],["Hecarim",48.94,1128],["Sylas",53.54,1117],["Viego",54.57,1028],["Jarvan IV",50.84,1011],["Wukong",50.05,953],["Nidalee",47.93,868],["Rengar",45.68,856],["Kayn",48.36,794],["Cho'Gath",48.64,738],["Ekko",52.33,621],["Elise",55.54,560],["Lillia",46.07,560],["Vi",51.87,534],["Master Yi",54.13,521],["Shaco",44.92,492],["Diana",50.62,482],["Kindred",49.46,465],["Naafiri",53.95,430],["Jayce",54.78,387],["Shyvana",50.28,356],["Rek'Sai",48.83,342],["Zac",48.39,341],["Zed",52.65,340],["Nunu & Willump",43.94,330],["Nocturne",54.29,315],["Briar",48.57,315],["Evelynn",52.36,296],["Fiddlesticks",54.79,292],["Bel'Veth",50.86,291],["Xin Zhao",52.77,271],["Sejuani",42.53,261],["Skarner",46.34,246],["Karthus",52.67,243],["Taliyah",53.94,241],["Ivern",46.93,228],["Zyra",43.50,223],["Rammus",50.00,186],["Udyr",50.87,173],["Warwick",51.23,162],["Locke",57.76,161],["Aatrox",56.13,155],["Pantheon",45.33,150],["Gwen",41.89,148],["Quinn",52.17,138],["Ambessa",54.55,132],["Amumu",51.38,109],["Gragas",50.00,108],["Fizz",49.50,101],["Darius",52.87,87],["Maokai",62.16,74],["Volibear",59.18,49],["Jax",59.57,47],["Trundle",48.72,39]],
+  mid:[["Locke",54.09,416],["Ahri",54.55,385],["Zed",51.27,355],["Sylas",52.62,344],["Yasuo",51.03,339],["Yone",50.32,314],["Viktor",54.52,310],["Syndra",50.98,306],["Katarina",50.00,294],["Ekko",52.42,248],["Twisted Fate",51.82,247],["Akali",56.25,240],["Lissandra",52.32,237],["LeBlanc",50.64,235],["Kassadin",57.67,189],["Vladimir",51.41,177],["Zoe",46.01,163],["Galio",49.03,155],["Aurora",53.64,151],["Akshan",52.05,146],["Hwei",56.16,146],["Fizz",51.43,140],["Irelia",57.55,139],["Diana",44.78,134],["Vex",52.63,133],["Xerath",50.00,130],["Orianna",52.89,121],["Malzahar",50.41,121],["Lux",51.69,118],["Ryze",53.47,101],["Talon",49.49,99],["Anivia",46.94,98],["Taliyah",52.81,89],["Annie",50.65,77],["Veigar",58.11,74],["Malphite",49.32,73],["Aurelion Sol",47.22,72],["Azir",52.17,69],["Cassiopeia",55.56,54],["Mel",58.82,51],["Pantheon",52.08,48],["Swain",53.19,47],["Lucian",58.14,43],["Tristana",57.14,42],["Nasus",56.10,41],["Riven",51.28,39],["Jayce",61.54,39],["Kog'Maw",54.05,37],["Cho'Gath",50.00,36],["Vel'Koz",64.71,34],["Garen",53.13,32],["Kayle",51.61,31]]
+};
+const MATCH_E = {
+  jungle:[["Lee Sin",49.82,10222],["Viego",51.82,5810],["Graves",49.62,5679],["Talon",49.09,5199],["Wukong",46.78,5150],["Kha'Zix",49.93,5055],["Sylas",50.56,4982],["Kayn",48.28,4952],["Jarvan IV",48.83,4258],["Hecarim",48.58,3938],["Cho'Gath",47.73,3790],["Master Yi",49.92,3634],["Ekko",49.94,3114],["Rengar",46.71,2997],["Lillia",48.98,2879],["Shaco",49.18,2822],["Vi",53.11,2785],["Briar",46.66,2649],["Diana",48.73,2565],["Nidalee",48.25,2537],["Shyvana",44.45,2450],["Elise",49.69,2417],["Nocturne",48.54,2330],["Zed",50.89,2136],["Naafiri",50.90,2000],["Kindred",50.48,1757],["Zac",47.66,1754],["Warwick",47.60,1670],["Evelynn",48.61,1615],["Sejuani",44.83,1537],["Bel'Veth",48.04,1503],["Fiddlesticks",47.67,1414],["Xin Zhao",47.42,1375],["Rammus",42.21,1355],["Nunu & Willump",46.85,1351],["Jayce",53.52,1293],["Amumu",48.04,1074],["Udyr",46.25,1068],["Rek'Sai",47.36,1043],["Karthus",48.86,968],["Quinn",50.58,858],["Skarner",45.67,843],["Zyra",44.87,789],["Ivern",47.00,783],["Taliyah",50.67,669],["Pantheon",53.92,599],["Aatrox",50.67,594],["Gwen",46.80,579],["Locke",53.31,574],["Gragas",47.46,571],["Malphite",51.80,527],["Volibear",53.61,526],["Ambessa",52.45,490],["Fizz",50.52,481],["Jax",52.35,405],["Darius",53.51,385],["Maokai",49.71,340],["Teemo",51.20,334],["Trundle",49.12,285]],
+  mid:[["Zed",51.74,2449],["Ahri",50.35,2409],["Yasuo",48.53,2248],["Locke",52.36,2057],["Viktor",49.04,1972],["Yone",48.78,1970],["Katarina",47.96,1891],["Sylas",50.83,1753],["Syndra",49.79,1683],["Akali",51.96,1530],["Ekko",49.06,1386],["Lissandra",49.73,1309],["LeBlanc",47.14,1222],["Twisted Fate",50.74,1212],["Fizz",48.68,1171],["Malzahar",48.42,1140],["Vladimir",46.60,1015],["Lux",48.54,962],["Xerath",49.89,882],["Hwei",48.48,856],["Kassadin",53.70,851],["Diana",47.46,847],["Vex",47.08,788],["Zoe",47.04,778],["Veigar",51.86,754],["Galio",52.30,740],["Irelia",53.14,700],["Aurora",50.44,684],["Akshan",48.45,677],["Orianna",52.19,661],["Anivia",53.75,506],["Ryze",55.49,501],["Talon",51.63,461],["Annie",46.72,458],["Mel",57.80,455],["Malphite",44.78,431],["Azir",52.90,414],["Aurelion Sol",49.36,389],["Taliyah",55.14,350],["Cassiopeia",58.66,254],["Swain",51.26,238],["Pantheon",49.55,224],["Vel'Koz",52.91,223],["Nasus",44.12,204],["Jayce",54.30,186],["Kog'Maw",44.77,172],["Gragas",41.18,170],["Naafiri",45.68,162],["Ziggs",48.41,157],["Garen",50.66,152],["Gwen",43.15,146],["Brand",53.47,144],["Kayle",48.23,141],["Smolder",70.27,111]]
+};
+
+const BENCH = [
+  {n:"Davemon",r:"NA · Challenger, 3,228 LP",g:455,wr:60.4,note:"#1 on the OneTricks Qiyana ladder"},
+  {n:"holychickencows",r:"NA · Challenger, 2,046 LP",g:980,wr:55.0,note:"Qiyana one-trick"},
+  {n:"Kaitania (twtv kaiitania)",r:"EUW · Challenger, 2,456 LP",g:767,wr:56.1,note:"Qiyana one-trick; 65.6% over 125 games on a Grandmaster alt"}
+];
+
+const ALIASES = {tf:"Twisted Fate",mf:"Miss Fortune",j4:"Jarvan IV",asol:"Aurelion Sol",yi:"Master Yi",lb:"LeBlanc",kha:"Kha'Zix",gp:"Gangplank",mundo:"Dr. Mundo",nunu:"Nunu & Willump",tk:"Tahm Kench",ww:"Warwick",xin:"Xin Zhao",wu:"Wukong",kog:"Kog'Maw",cho:"Cho'Gath",renata:"Renata Glasc",heimer:"Heimerdinger",morde:"Mordekaiser",fiddle:"Fiddlesticks",naut:"Nautilus",blitz:"Blitzcrank",cass:"Cassiopeia",kass:"Kassadin",kat:"Katarina",liss:"Lissandra",malz:"Malzahar",ori:"Orianna",panth:"Pantheon",sej:"Sejuani",trynd:"Tryndamere",vlad:"Vladimir",voli:"Volibear",eve:"Evelynn",noc:"Nocturne",aph:"Aphelios",cait:"Caitlyn",ez:"Ezreal",sera:"Seraphine",raka:"Soraka",zil:"Zilean",bel:"Bel'Veth",velk:"Vel'Koz"};
+const PUSH = new Set(["Anivia","Azir","Viktor","Orianna","Ziggs","Xerath","Hwei","Lux","Mel","Syndra","Cassiopeia","Malzahar","Aurelion Sol","Taliyah","Vex","Ryze","Vel'Koz","Brand","Swain","Heimerdinger","Smolder","Kog'Maw","Karthus","Twisted Fate","Lissandra","Zoe"]);
+const HPB = new Set(["Sett","Volibear","Darius","Garen","Mordekaiser","Illaoi","Nasus","Udyr","Trundle","Olaf","Warwick","Gragas","Jarvan IV","Shyvana","Zaahen","Aatrox","Renekton","Gnar"]);
+const EXAMPLE = {top:"Ornn",jungle:"Lee Sin",mid:"Ahri",bot:"Jinx",support:"Lulu"};
+
+const COMBOS = [
+  {n:"Point-blank burst",k:"E Q W Q",t:"Audacity into Q can't miss, and W refreshes Q for the second hit. In lane, Audacity through a minion to trade from range and walk out.",role:"both"},
+  {n:"Wall stun",k:"E R AA Q W Q",t:"Dash in, ult them into the nearest wall, then auto between each Q. River and brush in the ult's path detonate too.",role:"both"},
+  {n:"Flash one-shot",k:"F E Q W Q",t:"Flash + Audacity closes from out of range: River Q roots, W refreshes Q, Rock Q finishes them under 50%.",role:"both"},
+  {n:"Flash ult",k:"R F Q W E Q",t:"Flash during the ult's cast to shove the target into a wall from out of range.",role:"both"},
+  {n:"Hydra cancel",k:"E R AA Q W H AA Q",t:"With Profane, the Hydra active cancels W's animation (H = Hydra).",role:"mid"}
+];
+const MECH = [
+  "<b>W refreshes Q.</b> In the jungle never double-Q a camp; wait for W and Q again.",
+  "<b>Swap elements to re-proc your passive</b> on the same target: alternate River and Brush for two Royal Privilege hits.",
+  "<b>Always hold an element.</b> Terrashape's element also adds on-hit damage.",
+  "<b>Rock Q only bonuses targets under 50% HP</b> and the bonus is capped, so auto them below half first.",
+  "<b>You can ult during your E or W dash.</b>",
+  "<b>Open from unseen.</b> First Strike, Brush stealth and Umbral's Nightstalker all reward the first hit coming out of fog.",
+  "<b>Edge of Night blocks reveals</b> like Kai'Sa W and Lee Sin Q, not just CC. It can't stop Twisted Fate's global ult."
+];
+
+const SOURCES = [
+  ["OP.GG: Qiyana jungle build, Master+, 16.20","https://op.gg/lol/champions/qiyana/build/jungle?region=global&type=ranked&tier=master_plus&patch=16.20"],
+  ["OP.GG: Qiyana mid build, Master+, 16.20","https://op.gg/lol/champions/qiyana/build/mid?region=global&type=ranked&tier=master_plus&patch=16.20"],
+  ["OP.GG: Qiyana jungle items, Master+","https://op.gg/lol/champions/qiyana/items/jungle?patch=16.20&region=global&tier=master_plus&type=ranked"],
+  ["OP.GG: Qiyana mid items, Master+","https://op.gg/lol/champions/qiyana/items/mid?patch=16.20&region=global&tier=master_plus&type=ranked"],
+  ["OP.GG: Qiyana jungle counters, Master+","https://op.gg/lol/champions/qiyana/counters/jungle?region=global&type=ranked&tier=master_plus&patch=16.20"],
+  ["OP.GG: Qiyana mid counters, Master+","https://op.gg/lol/champions/qiyana/counters/mid?region=global&type=ranked&tier=master_plus&patch=16.20"],
+  ["OP.GG: Qiyana jungle paths (not split by rank)","https://op.gg/lol/champions/qiyana/jungle-paths/jungle?region=global&type=ranked&tier=master_plus&patch=16.20"],
+  ["OP.GG: Qiyana Emerald+ counters (sample-size fallback)","https://op.gg/lol/champions/qiyana/counters/jungle?region=global&type=ranked&tier=emerald_plus&patch=16.20"],
+  ["LoLVVV: Qiyana pro builds, 16.20","https://www.lolvvv.com/champion/Qiyana/probuilds"],
+  ["OneTricks.gg: best Qiyana players","https://www.onetricks.gg/champions/ranking/Qiyana"],
+  ["League of Graphs: best Qiyana players","https://www.leagueofgraphs.com/rankings/summoners/qiyana"],
+  ["LoLalytics: Qiyana leaderboard","https://lolalytics.com/lol/qiyana/leaderboard/"],
+  ["Skill-Capped: Qiyana jungle guide, 26.20","https://www.skill-capped.com/lol/guides/builds/qiyana/jungle"],
+  ["Skill-Capped: Qiyana mid guide, 26.20","https://www.skill-capped.com/lol/guides/builds/qiyana/mid"],
+  ["Mobalytics: Qiyana combos","https://mobalytics.gg/lol/champions/qiyana/combos"],
+  ["RiftPatchNotes: Lord Dominik's Regards (Giant Slayer, 26.1)","https://www.riftpatchnotes.com/lol/item/lord-dominiks-regards"],
+  ["RiftPatchNotes: Serpent's Fang","https://www.riftpatchnotes.com/lol/item/serpents-fang"],
+  ["RiftPatchNotes: Umbral Glaive","https://www.riftpatchnotes.com/lol/item/umbral-glaive"],
+  ["MetaBot: Endless Hunger","https://metabot.gg/en/league/item/2517"],
+  ["MetaBot: Bastionbreaker win rate by game length","https://metabot.gg/en/league/item/2520/stats"],
+  ["U.GG: Bastionbreaker","https://u.gg/lol/items/bastionbreaker"],
+  ["RiftPatchNotes: Gluttonous Greaves","https://www.riftpatchnotes.com/lol/item/gluttonous-greaves"],
+  ["RiftPatchNotes: Crimson Lucidity from the mid quest","https://www.riftpatchnotes.com/lol/item/crimson-lucidity"],
+  ["Esports.gg: 2026 objective changes","https://esports.gg/news/league-of-legends/atakhan-feats-of-strength-league-of-legends-2026"],
+  ["Riot: 2026 season one gameplay preview","https://www.leagueoflegends.com/en-us/news/dev/dev-2026-season-one-gameplay-preview/"],
+  ["Sheep Esports: Season 2 role quest changes","https://www.sheepesports.com/en/all/articles/all-gameplay-changes-coming-to-league-of-legends-season-2-of-2026/en"]
+];
+</script>
+<script>
+/* Champion tags. name|roles|class|AP share|flags
+   roles T J M B S. class T tank F fighter A assassin M mage K marksman E enchanter C catcher.
+   flags: H big heal, h heal, S shield that protects their carry (enchanter-grade), s smaller or self shield, c hard CC (each),
+   q catch/point-click CC that Edge of Night blocks, u suppression, i stealth, d dashes, p long-range poke, t armor/HP stacker,
+   e hard engage, k evasive/untargetable, b burst, z AoE teamfight, x true damage */
+const CH = `Aatrox|T|F|0|Hcd
+Ahri|M|MA|1|cdb
+Akali|MT|A|1|idbk
+Akshan|MT|KA|0|idb
+Alistar|S|TC|1|ccqe
+Ambessa|TJ|F|0|dce
+Amumu|JS|T|1|ccez
+Anivia|M|M|1|cz
+Annie|MS|M|1|cqbs
+Aphelios|B|K|0|hc
+Ashe|BS|K|0|cp
+Aurelion Sol|M|M|1|czp
+Aurora|MT|M|1|dcb
+Azir|M|M|1|cdz
+Bard|S|EC|1|ch
+Bel'Veth|J|F|0|dhc
+Blitzcrank|S|CT|1|ccqes
+Brand|SMJ|M|1|czb
+Braum|S|TC|1|cck
+Briar|J|FA|0|Hecd
+Caitlyn|B|K|0|pc
+Camille|T|FA|0|dcbx
+Cassiopeia|M|M|1|cz
+Cho'Gath|TJ|T|1|ctxh
+Corki|MB|MK|0.6|p
+Darius|TJ|F|0|chx
+Diana|JM|AF|1|dcsbe
+Dr. Mundo|TJ|T|0.5|Ht
+Draven|B|K|0|b
+Ekko|JM|A|1|dcshbk
+Elise|J|MA|1|cbk
+Evelynn|J|A|1|icbk
+Ezreal|B|K|0.2|pd
+Fiddlesticks|J|M|1|cqHez
+Fiora|T|F|0|xhkd
+Fizz|M|A|1|kdbc
+Galio|MS|TM|1|cce
+Gangplank|T|F|0.1|hp
+Garen|T|F|0|sx
+Gnar|T|FT|0.2|c
+Gragas|JTM|FM|1|ced
+Graves|J|KF|0|db
+Gwen|TJ|F|1|hxkd
+Hecarim|J|F|0|ecd
+Heimerdinger|MTS|M|1|czp
+Hwei|MS|M|1|pczs
+Illaoi|T|F|0|Hz
+Irelia|TM|F|0|dchb
+Ivern|J|E|1|Sc
+Janna|S|E|1|Sch
+Jarvan IV|JT|FT|0|cceds
+Jax|TJ|F|0.5|cdk
+Jayce|TM|FK|0|pcb
+Jhin|B|K|0|pc
+Jinx|B|K|0|cp
+K'Sante|T|TF|0|tcce
+Kai'Sa|B|KA|0.4|dbi
+Kalista|B|K|0|dc
+Karma|SM|EM|1|Scp
+Karthus|JMB|M|1|zp
+Kassadin|M|A|1|db
+Katarina|M|A|0.9|dbz
+Kayle|TM|FM|0.7|kh
+Kayn|J|AF|0|dhkbc
+Kennen|TM|M|1|ccezd
+Kha'Zix|J|A|0|idb
+Kindred|J|K|0|hk
+Kled|T|F|0|ced
+Kog'Maw|BM|K|0.5|p
+LeBlanc|M|A|1|dbc
+Lee Sin|J|FA|0|dcsb
+Leona|S|TC|1|ccet
+Lillia|J|FM|1|hcz
+Lissandra|M|M|1|ccqez
+Locke|M|A|1|dbh
+Lucian|B|K|0|db
+Lulu|S|E|1|Scq
+Lux|MS|M|1|cSpb
+Malphite|TM|T|1|tces
+Malzahar|M|M|1|uqck
+Maokai|SJT|T|1|cqht
+Master Yi|J|FA|0|Hkx
+Mel|M|M|1|kpc
+Milio|S|E|1|Shc
+Miss Fortune|B|K|0|z
+Mordekaiser|TJ|F|1|Sqh
+Morgana|SMJ|ME|1|cks
+Naafiri|MJ|A|0|db
+Nami|S|E|1|hc
+Nasus|T|FT|0.1|ht
+Nautilus|S|TC|1|ccqes
+Neeko|MS|M|1|cce
+Nidalee|J|A|1|phd
+Nilah|B|K|0|chk
+Nocturne|J|AF|0|ckeb
+Nunu & Willump|J|T|1|chze
+Olaf|TJ|F|0|Hxk
+Orianna|M|M|1|Scz
+Ornn|T|T|0.5|tcce
+Pantheon|TSMJ|FA|0|cqeb
+Poppy|TJS|TF|0|cst
+Pyke|S|AC|0|cixqe
+Quinn|T|K|0|d
+Rakan|S|EC|1|Scced
+Rammus|J|T|0.7|tqce
+Rek'Sai|J|F|0|cdh
+Rell|S|TC|1|ccet
+Renata Glasc|S|E|1|cz
+Renekton|T|F|0|cdh
+Rengar|J|A|0|ibcd
+Riven|T|F|0|scdb
+Rumble|TM|MF|1|sz
+Ryze|M|M|1|qc
+Samira|B|K|0|hdkb
+Sejuani|J|T|0.8|ccet
+Senna|SB|KE|0|hpci
+Seraphine|SMB|EM|1|Shcz
+Sett|TS|F|0|Scxe
+Shaco|JS|A|0.3|icb
+Shen|TS|T|0.6|cSe
+Shyvana|J|F|0.5|shce
+Singed|T|TM|1|ct
+Sion|T|T|0.2|sccet
+Sivir|B|K|0|k
+Skarner|JT|T|0.3|usccet
+Smolder|BMT|KM|0.2|p
+Sona|S|E|1|hsc
+Soraka|S|E|1|Hc
+Swain|MSB|M|1|Hcz
+Sylas|MJ|MA|1|Hdbc
+Syndra|M|M|1|cb
+Tahm Kench|TS|T|1|cst
+Taliyah|JM|M|1|czp
+Talon|MJ|A|0|idb
+Taric|S|ET|1|hSck
+Teemo|T|M|1|iz
+Thresh|S|CE|1|ccsqe
+Tristana|BM|K|0.2|dcb
+Trundle|JT|F|0|Hc
+Tryndamere|T|F|0|hk
+Twisted Fate|M|M|0.7|qcep
+Twitch|BJ|K|0.1|ib
+Udyr|J|F|0.5|csh
+Urgot|T|F|0|usc
+Varus|BM|K|0.3|pc
+Vayne|BT|K|0|ixcdq
+Veigar|M|M|1|cb
+Vel'Koz|MS|M|1|pcz
+Vex|M|M|1|cdb
+Vi|J|F|0|qcesd
+Viego|J|FA|0|hkdb
+Viktor|M|M|1|zcs
+Vladimir|MT|M|1|Hkbz
+Volibear|TJ|FT|0.6|hcse
+Warwick|JT|F|0.5|Hue
+Wukong|TJ|F|0|cied
+Xayah|B|K|0|kc
+Xerath|MS|M|1|pcb
+Xin Zhao|JT|F|0|cdhe
+Yasuo|MTB|FA|0|skcd
+Yone|MT|FA|0.5|scdb
+Yorick|T|F|0.1|cz
+Yunara|B|K|0|
+Yuumi|S|E|1|Hskc
+Zaahen|TJ|F|0|Hkdce
+Zac|JTS|T|1|eccht
+Zed|MJ|A|0|dkb
+Zeri|B|K|0|d
+Ziggs|MB|M|1|pz
+Zilean|SM|EM|1|kc
+Zoe|M|M|1|pcb
+Zyra|SJ|M|1|cz`;
+
+/* Kit notes, not stats. Win rates are shown separately from the Master+ tables. */
+const TIPS = {
+  "Malzahar":"Void Shift blocks the first spell's CC and cuts its damage, so open with Q to pop it. A ready Edge of Night answers the suppression ult.",
+  "Vex":"Dashing near Vex marks you with Gloom and her charged passive fears. Wait for the fear to go out before you W or E in.",
+  "Yasuo":"Wind Wall can eat your ult shockwave. Bait it or ult from an angle it can't cover.",
+  "Samira":"Blade Whirl destroys projectiles, so wait it out before you throw your ult.",
+  "Braum":"Unbreakable blocks projectiles, including your ult. Go around him, not through him.",
+  "Mel":"Rebuttal reflects projectiles. Don't fire your ult into it.",
+  "Fizz":"Playful/Trickster makes him untargetable. Hold E and R until he's used it.",
+  "Vladimir":"Sanguine Pool dodges your burst. Bait the pool, then commit.",
+  "Lissandra":"Her ult can freeze you or put her in stasis. Bait it before you commit your own ult.",
+  "Gwen":"Hallowed Mist blocks damage from outside it. Step inside or wait for it to end.",
+  "Malphite":"Armor stacker with an unstoppable ult. Don't duel him; he's not your target.",
+  "Gragas":"Body Slam interrupts your combo and he out-trades you. Take Conqueror and win the map, not the lane.",
+  "Nasus":"Wither shuts down your all-in. Trade early, before his stacks and his slow come online.",
+  "Kayle":"She out-scales you. Punish her before 6 and when her ult is down.",
+  "Kog'Maw":"Mid Kog'Maw out-ranges you. Look for jungle-assisted all-ins.",
+  "Rammus":"Taunt plus armor and his reflect punish your autos. Never 1v1 him; trade the map instead.",
+  "Shyvana":"Wins mid-game duels as her stacks grow. Fight before her ult and dragon timers.",
+  "Sejuani":"Your worst common Master+ jungle matchup. Her freeze stuns lock you down; Mercury's and Edge of Night help.",
+  "Zyra":"Plants zone her camps. Don't chase into her ult area.",
+  "Skarner":"His ult impales and drags you (a suppression). Keep Edge of Night ready or hold QSS.",
+  "Warwick":"His ult suppresses and he heals hard. Don't fight him low.",
+  "Wukong":"His clone baits your ult and his knock-up ult interrupts your combo.",
+  "Rengar":"Leaps out of brush and stealth. Ward his paths and keep Oracle Lens up.",
+  "Briar":"Huge healing and a long-range fear engage. Keep Edge of Night for her ult.",
+  "Mordekaiser":"Edge of Night's spell shield blocks Realm of Death.",
+  "Twisted Fate":"Gold Card is a point-click stun that Edge of Night blocks. His ult reveals you even in Brush, so don't count on stealth while it's up.",
+  "Zed":"Dodge his W-E-Q with your own dashes, then engage.",
+  "Nocturne":"Shroud of Darkness blocks your first spell. Pop it with Q before E or R.",
+  "Sivir":"Spell Shield eats your first ability. Pop it with Q before your ult.",
+  "Morgana":"Black Shield makes its target CC-immune, so your ult stun won't land on it.",
+  "Kindred":"Lamb's Respite stops deaths inside it. Wait it out before you ult.",
+  "Kassadin":"Punish him hard before 6.",
+  "Ryze":"His root is point-click; trade when it's on cooldown.",
+  "Cassiopeia":"Her ult only stuns if you face her, so dash past it.",
+  "Smolder":"Kill him before his stacks matter.",
+  "Lee Sin":"His Q reveals you out of Brush; Edge of Night blocks it.",
+  "Viego":"Don't let him reset by possessing a fallen ally.",
+  "Vi":"Her ult is a point-click knock-up you can't dodge, so win the early skirmishes.",
+  "Pantheon":"Shield Vault is a point-click stun; Edge of Night blocks it.",
+  "Evelynn":"Camouflaged until she strikes. Oracle Lens and a Control Ward on her paths.",
+  "Annie":"Point-click stun with her passive and big AP burst. Mercury's or Maw.",
+  "LeBlanc":"Mobile AP burst. Don't chase her into her return pad.",
+  "Katarina":"Save River root for her Shunpo reset.",
+  "Diana":"Her Q into R pulls you in. Walk sideways out of Q's arc and fight once it's down.",
+  "Zoe":"Her sleep bubble punishes your all-in from long range. Dodge E with W and look for roams instead of forcing the lane.",
+  "Anivia":"Her wall cuts your dash paths and Q stuns. Dodge Q with W, and remember the egg before you commit.",
+  "Aurelion Sol":"He out-scales you. Pressure him before his stacks pile up.",
+  "Galio":"His taunt and magic-damage shield follow your roams. Track his ult before you fight.",
+  "Nunu & Willump":"Snowball ganks and a big heal. Ward his paths and don't duel him near his camps.",
+  "Shaco":"Boxes fear you and he invades. Sweep with Oracle Lens and never chase into his boxes.",
+  "Lillia":"Slippery, and her ult sleeps. River root stops her kiting.",
+  "Ivern":"His shields protect your targets; Serpent's Fang halves them.",
+  "Kai'Sa":"Her W reveals you and her ult dashes onto you. Edge of Night blocks the W.",
+  "Lulu":"Polymorph is point-click and her shield saves the carry. Edge of Night for the polymorph, Serpent's Fang for the shield.",
+  "Janna":"Her shield and tornado peel the carry; Serpent's Fang halves the shield.",
+  "Karma":"Her empowered shield goes on the carry; Serpent's Fang halves it.",
+  "Milio":"Shields everything and his ult cleanses CC. Land your ult after he's used his.",
+  "Seraphine":"Shields and a long-range charm ult. Serpent's Fang, and dodge her ult with W.",
+  "Akali":"Her shroud hides her, but your AoE Q and ult still hit where she's standing.",
+  "Talon":"Roams constantly and hops walls. Track him and use River root to stop his escape."
+};
+</script>
+<script>
+/* ===== ENGINE: pure functions from (role, gold state, enemy team) to a build ===== */
+const CLASS={T:"Tank",F:"Fighter",A:"Assassin",M:"Mage",K:"Marksman",E:"Enchanter",C:"Catcher"};
+const SLOTS=[{k:"top",r:"T",lbl:"Top"},{k:"jungle",r:"J",lbl:"Jungle"},{k:"mid",r:"M",lbl:"Mid"},{k:"bot",r:"B",lbl:"Bot"},{k:"support",r:"S",lbl:"Support"}];
+const CHAMPS=CH.trim().split("\n").map(l=>{const [n,roles,cls,ap,f=""]=l.split("|");return {n,roles,cls,ap:+ap,f};});
+const BY=Object.fromEntries(CHAMPS.map(c=>[c.n,c]));
+const toMap=rows=>Object.fromEntries(rows.map(([n,wr,g])=>[n,{wr,g}]));
+const MM={jungle:toMap(MATCH_M.jungle),mid:toMap(MATCH_M.mid)},ME={jungle:toMap(MATCH_E.jungle),mid:toMap(MATCH_E.mid)};
+const PATHBY=Object.fromEntries([...PATHS.jungle,...PATHS.mid].map(p=>[p.id,p]));
+const has=(c,x)=>c.f.includes(x);
+const cnt=(c,x)=>c.f.split(x).length-1;
+const isCls=(c,x)=>c.cls.includes(x);
+const fmt=n=>n.toLocaleString("en-US");
+const f1=n=>(+n).toFixed(1);
+const SELF_S=new Set(["Sett","Mordekaiser"]);
+const nm=k=>ITEMS[k]?ITEMS[k].n:BOOTS[k]?BOOTS[k].n:k;
+function names(list){const n=[...new Set(list.map(c=>c.n))];return n.length<2?n.join(""):n.slice(0,-1).join(", ")+" and "+n[n.length-1];}
+function classLabel(c){return c.cls.split("").map(x=>CLASS[x]).join(" / ");}
+function dmgLabel(c){return c.ap>=0.7?"AP":c.ap<=0.3?"AD":"Mixed";}
+
+/* Master+ win rate, shrunk toward the Emerald+ number when the Master+ sample is small. */
+function matchup(role,n){
+  const m=MM[role][n],e=ME[role][n];
+  if(m){const prior=e?e.wr:50;return {wr:m.wr,g:m.g,ewr:e?e.wr:null,eg:e?e.g:0,est:(m.wr*m.g+prior*150)/(m.g+150),src:"m"};}
+  if(e)return {wr:null,g:0,ewr:e.wr,eg:e.g,est:(e.wr*e.g+50*300)/(e.g+300),src:"e"};
+  return null;
+}
+function verdict(x){return x>=53?["Favored","good"]:x>=51?["Slight edge","good"]:x>49?["Even","even"]:x>47?["Slightly behind","bad"]:x>45?["Tough","bad"]:["Counter","bad"];}
+
+function analyze(team){
+  const A={team,n:team.length,w:0,apw:0,front:0,hp:0,sh:0,tanks:[],tanksT:[],hpList:[],squishy:[],immobile:[],healers:[],heal:0,shielders:[],realShield:[],cc:0,catchers:[],supp:[],stealth:[],poke:[],dashers:[],evasive:[],engage:[],aoe:[],burstAP:[],burstAD:[],autos:[]};
+  for(const {c} of team){
+    const T=isCls(c,"T"),F=isCls(c,"F"),E=isCls(c,"E"),squishy=!T&&!F;
+    const w=T&&!F?0.6:E&&!isCls(c,"M")&&!isCls(c,"K")?0.45:F?1:1.2;
+    A.w+=w;A.apw+=w*c.ap;
+    let fr=T?1:F?0.5:0;if(has(c,"t"))fr+=0.5;A.front+=Math.min(fr,1.5);
+    if(T||has(c,"t"))A.tanks.push(c);
+    if(T)A.tanksT.push(c);
+    if(T||HPB.has(c.n)){A.hp+=T?1:0.5;A.hpList.push(c);}
+    if(squishy){A.squishy.push(c);if((isCls(c,"K")||isCls(c,"M"))&&!has(c,"d"))A.immobile.push(c);}
+    const h=cnt(c,"H")*2+cnt(c,"h");if(h){A.heal+=h;A.healers.push(c);}
+    if(has(c,"S")){A.sh+=2;A.shielders.push(c);A.realShield.push(c);}
+    else if(has(c,"s")){A.sh+=squishy?0.5:0.25;A.shielders.push(c);}
+    A.cc+=cnt(c,"c")+(has(c,"q")?1:0)+(has(c,"u")?2:0);
+    if(has(c,"q"))A.catchers.push(c);
+    if(has(c,"u"))A.supp.push(c);
+    if(has(c,"i"))A.stealth.push(c);
+    if(has(c,"p"))A.poke.push(c);
+    if(has(c,"d"))A.dashers.push(c);
+    if(has(c,"k"))A.evasive.push(c);
+    if(has(c,"e"))A.engage.push(c);
+    if(has(c,"z"))A.aoe.push(c);
+    if(has(c,"b")&&c.ap>=0.7)A.burstAP.push(c);
+    if(has(c,"b")&&c.ap<=0.3)A.burstAD.push(c);
+    if(c.ap<=0.3&&(isCls(c,"K")||(F&&!has(c,"b"))))A.autos.push(c);
+  }
+  A.ap=A.w?A.apw/A.w:0.5;
+  A.ccLevel=A.cc>=10?"High":A.cc>=6?"Medium":"Low";
+  return A;
+}
+
+function choosePath(role,state,A,opp){
+  const sq=A.squishy.length,catchN=A.catchers.length;
+  const shieldWho=names(A.realShield.length?A.realShield:A.shielders);
+  if(role==="jungle"){
+    if(A.sh>=3.5)return ["j_sf",`${shieldWho} bring big shields, so Serpent's Fang comes second, the way Yike built it at Worlds into Milio.`];
+    if(A.hp>=2)return ["j_ldr",`${names(A.hpList)} stack health, so rush Lord Dominik's Giant Slayer third.`];
+    if(state==="ahead")return sq>=3&&A.hp<1?["j_hub",`Ahead into ${sq} squishies with almost no frontline: Hubris stacks AD on every takedown.`]:["j_bb","Ahead: Bastionbreaker first wins 58.4% in Master+ and Sabotage cashes each kill into an objective."];
+    if(catchN>=3||(state==="behind"&&catchN>=2))return ["j_eon2",`${names(A.catchers)} can each lock you down with one button, so Edge of Night comes second.`];
+    if(sq>=4&&!A.tanksT.length&&catchN<2)return ["j_ax",`${sq} squishies and no tanks: Axiom third keeps your ult rolling (59.3% in Master+).`];
+    if(state==="even"&&A.immobile.length>=3&&A.hp<1.5)return ["j_umb",`${names(A.immobile)} can't dash away, so open from brush with Umbral Glaive's true damage.`];
+    return ["j_std","Nothing in this comp beats the default, the most-played Master+ jungle core."];
+  }
+  const bruiser=opp&&/[FT]/.test(opp.cls),push=opp&&PUSH.has(opp.n);
+  if(A.sh>=3.5)return ["m_sf",`${shieldWho} bring big shields, so Serpent's Fang comes second. Profane → Serpent's → Serylda's is the best mid core with enough games (61.5%).`];
+  if(A.hp>=2)return ["m_ldr",`${names(A.hpList)} stack health, so Lord Dominik's Giant Slayer comes third.`];
+  if(state==="ahead")return sq>=3&&A.hp<1?["m_hub",`Ahead into ${sq} squishies: Hubris stacks AD on every takedown.`]:["m_obj","Ahead into some frontline: Bastionbreaker third turns kills into towers."];
+  if(catchN>=2)return ["m_eon",`${names(A.catchers)} can each lock you down with one button, so Edge of Night comes third.`];
+  if(bruiser)return ["m_prof",`${opp.n} is a ${classLabel(opp).toLowerCase()}: Profane first with Conqueror.`];
+  if(push)return ["m_prof",`${opp.n} shoves, so Profane first keeps the wave even while you roam.`];
+  if(A.aoe.length>=3)return ["m_prof",`${A.aoe.length} enemies want grouped fights; Profane's active hits all of them.`];
+  return ["m_std",opp?`Into ${opp.n}, burst and the slow beat waveclear.`:"Default mid core until you know your lane."];
+}
+
+function startPick(role,opp){
+  const S=STATS[role];
+  if(role==="mid")return {n:"Doran's Blade + Health Potion",why:`${f1(S.start[0][1])}% of Master+ mid games, ${f1(S.start[0][3])}% win. Long Sword starts win ${f1(S.start[1][3])}%.`};
+  const m=opp?matchup("jungle",opp.n):null;
+  if(m&&m.est<48.5)return {n:"Gustwalker Hatchling + Health Potion",why:`${opp.n} beats you head-to-head, so take the speed pet to track them and dodge their invades. Gustwalker is the most-picked Master+ pet (54%).`};
+  return {n:"Scorchclaw Pup + Health Potion",why:"Burn and slow on your ganks. It wins more than Gustwalker in Master+ with or without the potion (51.7% vs 50.7% without, 50.3% vs 49.0% with)."};
+}
+
+function plan(role,state,A,opp,force){
+  const [auto,autoReason]=choosePath(role,state,A,opp);
+  const pinned=!!(force&&PATHBY[force]&&PATHS[role].some(p=>p.id===force));
+  const pid=pinned?force:auto,path=PATHBY[pid];
+  const lede=!A.n?(pinned?"Pinned by you. Add enemies to see what the comp calls for.":"No enemies picked yet, so this is the Master+ default route. Tap an enemy slot to tailor it.")
+    :pinned&&pid!==auto?`Pinned by you. This comp would get ${PATHBY[auto].name}: ${autoReason}`:autoReason;
+  const P={pid,auto,pinned,path,lede,core:[...path.i],late:[],boots:"ionian",why:{},swaps:[],early:[],mod:"",start:startPick(role,opp)};
+  const sw=(k,title,text,built)=>P.swaps.push({k,title,text,built});
+  const catchN=A.catchers.length,sq=A.squishy.length;
+  const coreWhy={
+    voltaic:"The most-bought item in both roles: the most lethality in the game plus a burst proc.",
+    bastion:"True damage on your first hit, and Sabotage cashes kills into towers and epic monsters.",
+    eon:catchN?`Spell shield for ${names(A.catchers)}.`:"Health and a spell shield that eats one key ability or reveal.",
+    serylda:A.tanks.length?`Armor pen through ${names(A.tanks)}, plus the slow under 50% HP.`:"Armor pen, and the slow under 50% HP stops escapes.",
+    ldr:A.hpList.length?`Giant Slayer and armor pen for ${names(A.hpList)}.`:"Giant Slayer and armor pen for health stackers.",
+    profane:"Waveclear, cleave and an active that cancels W's animation.",
+    hubris:"Snowball AD from every takedown.",
+    umbral:"Lethality and Nightstalker true damage on your first hit out of fog.",
+    axiom:"Takedowns refund your ult for back-to-back fights.",
+    serpent:A.shielders.length?`Halves the shields from ${names(A.shielders)}.`:"Halves enemy shields and makes your abilities AoE."
+  };
+  for(const k of P.core)P.why[k]=coreWhy[k];
+
+  /* Edge of Night moves up against catch or burst. In jungle Bastionbreaker stays: it's the objective item. */
+  let eonFirst=false,bumped=null;
+  const needEoN=!pinned&&!P.core.includes("eon")&&(catchN>=2||(state==="behind"&&(catchN||A.burstAD.length+A.burstAP.length>=2)));
+  if(needEoN){
+    const reason=catchN>=2?`${names(A.catchers)} can each lock you down with one button.`:"You're behind and can't one-shot them yet, so survive their first lockdown before buying more damage.";
+    if(role==="jungle"&&P.core[2]==="bastion"){
+      eonFirst=true;
+      sw("def","Edge of Night moves up to 4th",`${reason} Bastionbreaker stays third for objectives.`,true);
+    }else{
+      const prev=P.core[2];P.core[2]="eon";P.mod="Edge of Night third";bumped=prev;
+      P.why.eon=catchN?`Spell shield for ${names(A.catchers)}.`:"Behind: health and a spell shield before more damage.";
+      sw("def",`Edge of Night replaces ${nm(prev)} as item 3`,`${reason} ${nm(prev)} moves later.`,true);
+      P.lede+=` Edge of Night goes ahead of ${nm(prev)} ${catchN>=2?`because of ${names(A.catchers)}`:"because you're behind"}.`;
+    }
+  }
+
+  /* boots */
+  let bw;
+  const jg=role==="jungle";
+  if(A.ap>=0.55||(A.cc>=10&&A.ap>=0.4)){P.boots="mercury";bw=(A.ap>=0.55?`${Math.round(A.ap*100)}% of their damage is magic.`:`${A.ccLevel} CC load.`)+(jg?" Mercury's wins 54.8% in Master+ jungle vs 51.6% for Ionian.":"");}
+  else if(A.ap<=0.3&&A.autos.length>=2){P.boots="steel";bw=`${names(A.autos)} deal their damage with basic attacks.`;}
+  else if(!jg){P.boots="glutton";bw="Wins 56.9% in Master+ mid vs 52.4% for Ionian, and the omnivamp grows with your takedowns.";}
+  else if(state==="ahead"){P.boots="glutton";bw="Ahead: Gluttonous stacks omnivamp off your takedowns (59.9% over 633 Master+ jungle games).";}
+  else{P.boots="ionian";bw="Bought in 77.8% of Master+ jungle games: more Q casts and faster Flash and Smite.";}
+  if(jg)bw+=" Upgrade them after your first two items.";
+  else bw+=` The mid quest upgrades them to ${BOOTS[P.boots].t3} for free.`;
+  P.why.boots=bw;
+
+  /* late slots. Ahead leans on damage, behind on defense. */
+  const tilt=state==="ahead"?-0.6:state==="behind"?0.4:0;
+  const cand={
+    serylda:3.0+Math.min(A.front,3)*0.6,
+    eon:2.6+catchN*0.9+A.poke.length*0.5+(state==="behind"?1:0),
+    ga:3.2+(state==="behind"?0.6:0),
+    axiom:1.8+(sq>=4?1.4:sq>=3?0.6:0)+(A.aoe.length>=2?0.3:0)-(A.tanksT.length>=2?1:0),
+    youmuu:1.5+(state==="ahead"?0.5:0),
+    dd:1.6+A.burstAD.length*0.8+(A.ap<=0.35?1.2:0)+tilt,
+    endless:1.3+(A.cc>=10?0.9:0)+(jg?0:0.4),
+    bastion:1.7,voltaic:1.5,profane:jg?0.3:1.3
+  };
+  if(A.sh>=1)cand.serpent=1.6+A.sh*0.7;
+  if(A.hp>=1.5)cand.ldr=2.4+A.hp*0.5;
+  if(A.ap>=0.55||A.burstAP.length>=2)cand.maw=2.6+A.burstAP.length*0.6+Math.max(0,A.ap-0.5)*3+tilt;
+  if(A.supp.length)cand.mercurial=1.6+A.supp.length*0.5+tilt;
+  if(A.heal>=6)cand.chempunk=1.5+(A.heal-6)*0.3;
+  for(const k of P.core)delete cand[k];
+  if(P.core.includes("serylda")||bumped==="serylda")delete cand.ldr;
+  if(P.core.includes("ldr")||bumped==="ldr")delete cand.serylda;
+  if(cand.ldr!==undefined&&cand.serylda!==undefined){if(cand.ldr>cand.serylda)delete cand.serylda;else delete cand.ldr;}
+  let late=Object.entries(cand).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+  if(eonFirst)late=["eon",...late.filter(k=>k!=="eon")];
+  if(bumped)late=[bumped,...late.filter(k=>k!==bumped)];
+  late=late.slice(0,3);
+  if(state!=="behind"&&late.includes("ga")){late=late.filter(k=>k!=="ga");late.push("ga");}
+  if(state==="behind")late.sort((a,b)=>(ITEMS[b].k==="def")-(ITEMS[a].k==="def"));
+  const lateWhy={
+    serylda:A.tanks.length?`Armor pen through ${names(A.tanks)}.`:jg?"The top Master+ 4th item by games (59.9% over 4,180).":"The top Master+ mid 4th item (61.4% over 669).",
+    ldr:`Giant Slayer for ${names(A.hpList)}; replaces Serylda's (same Fatality slot).`,
+    eon:catchN?`Blocks the key CC from ${names(A.catchers)}.`:jg?"Survivability; 58.4% as a Master+ jungle 4th item.":"Survivability; 60.1% as a Master+ mid 4th item.",
+    ga:jg?"The highest late-slot win rate in Master+ jungle (66.1% as 5th).":"The highest late-slot win rate in Master+ mid (67.3% as 5th).",
+    axiom:sq>=3?`Ult resets while you chain through ${names(A.squishy)}.`:"Ult cooldown back on every takedown.",
+    youmuu:"Move speed to run down stragglers late.",
+    dd:A.burstAD.length?`Blunts the burst from ${names(A.burstAD)}.`:"Armor and damage smoothing against a physical-heavy team.",
+    endless:A.cc>=10?"20% tenacity against their CC, plus omnivamp for long fights.":"Late sustain: 65 AD, omnivamp and tenacity.",
+    serpent:`Halves the shields from ${names(A.shielders)}.`,
+    maw:A.burstAP.length?`Magic shield against ${names(A.burstAP)}.`:`${Math.round(A.ap*100)}% of their damage is magic.`,
+    mercurial:`Cleanses the suppression from ${names(A.supp)}.`,
+    chempunk:`Grievous Wounds for ${names(A.healers)} if nobody else on your team has it.`,
+    bastion:"More lethality and objective damage.",
+    voltaic:"More lethality and burst.",
+    profane:"Cleave and an AoE active for grouped fights."
+  };
+  for(const k of late)P.why[k]=lateWhy[k];
+  P.late=late;
+
+  /* explain what this comp changed */
+  const built=k=>P.core.includes(k)||P.late.includes(k);
+  if(A.sh>=1&&A.sh<3.5&&A.shielders.length)sw("util","Serpent's Fang",`${names(A.shielders)} shield. ${built("serpent")?"It's in your build. ":"Swap it in late if those shields keep saving their carry. "}Two or more real shielders would pull it to item 2.`,built("serpent"));
+  if(A.hp>=1.5&&A.hp<2)sw("pen","Lord Dominik's over Serylda's",`${names(A.hpList)} build health, so Giant Slayer beats Serylda's slow for your Fatality slot.`,built("ldr"));
+  if(A.ap>=0.55||A.burstAP.length>=2)sw("def","Magic damage check",`${Math.round(A.ap*100)}% magic damage${A.burstAP.length?`, burst from ${names(A.burstAP)}`:""}. ${P.boots==="mercury"?"Your boots are Mercury's Treads":"Swap to Mercury's Treads if they keep bursting you"}; ${built("maw")?"Maw of Malmortius is in your build.":"add Maw of Malmortius if you keep dying."}`,P.boots==="mercury"||built("maw"));
+  if(A.burstAD.length>=2||(A.ap<=0.35&&A.n>=4))sw("def","Physical damage check",`${A.burstAD.length?names(A.burstAD)+" burst physical damage":"Their damage is mostly physical"}. ${built("dd")?"Death's Dance is in your build.":"Death's Dance is a strong 4th or 5th if they focus you."}`,built("dd"));
+  if(A.supp.length)sw("def","Suppression",`${names(A.supp)} can suppress you. Keep Edge of Night's shield up for it; Quicksilver Sash is the backup if they're the whole threat.`,built("eon"));
+  if(A.heal>=4)sw("util","Healing",`${names(A.healers)} heal. Master+ Qiyanas almost never buy anti-heal (Chempunk in 0.1% of jungle games), so leave Grievous Wounds to your ADC or top laner unless their healer is the one you can't finish.`,built("chempunk"));
+  if(A.evasive.length)sw("util","Bait before you commit",`${names(A.evasive)} can dodge or block your burst. Pull the defensive tool out first, then E and R.`,false);
+
+  /* early purchases */
+  P.early.push(jg?"<b>Oracle Lens</b> on your first back: 7 of the last 10 pro Qiyana jungle games finished on it.":"<b>Oracle Lens</b> once you start roaming; fog flanks are how she wins fights.");
+  if(pid==="m_hub")P.early.push("<b>Gluttonous Greaves</b> early, then rush Hubris before you upgrade them.");
+  if(!jg&&opp&&opp.ap>=0.7&&has(opp,"b"))P.early.push(`<b>Null-Magic Mantle</b> early against ${opp.n}'s burst; it builds into Mercury's.`);
+  if(A.stealth.length)P.early.push(`<b>Control Wards</b> on their paths: ${names(A.stealth)} use stealth.`);
+  return P;
+}
+
+const rstat=r=>`${r[1]}% pick · ${r[3]}%`;
+const rnote=(a,b)=>`${a[3]}% vs ${b[3]}% for ${b[0]}`;
+function runes(role,A,opp){
+  const R=RSTAT[role];
+  if(role==="jungle"){
+    const ten=A.cc>=10;
+    return {key:"First Strike",tree:"Inspiration",keyStat:"92.3% of Master+ jungle games (50.5%). It rewards opening from unseen, so flank out of vision.",
+      prim:[[R.inspo[0][0],rnote(R.inspo[0],R.inspo[1])],[R.tonic[0],rstat(R.tonic)],[R.cosmic[0],rstat(R.cosmic)]],
+      secTree:"Domination",sec:[[R.impact[0],rstat(R.impact)],[R.hunter[0][0],rnote(R.hunter[0],R.hunter[1])]],
+      shards:[["Adaptive Force",""],["Adaptive Force",""],ten?["Tenacity and Slow Resist",`${A.ccLevel} CC load`]:[R.shard[0][0],rnote(R.shard[0],R.shard[1])]],
+      extra:"Cash Back and Treasure Hunter are the gold runes; Master+ Qiyanas already pick Cash Back more than Magical Footwear, and both win more."};
+  }
+  const bruiser=opp&&/[FT]/.test(opp.cls);
+  const conq=bruiser||A.hp>=2||A.front>=3;
+  const cut=A.hp>=1||A.front>=1.5;
+  if(conq)return {key:"Conqueror",tree:"Precision",keyStat:`24.8% of Master+ mid games at 53.7%, vs 52.7% for Electrocute. Taken here because ${bruiser?opp.n+" wins extended trades":"their team is tanky"}.`,
+    prim:[["Triumph",""],["Legend: Haste",""],cut?[R.last[1][0],rnote(R.last[1],R.last[0])]:["Last Stand",""]],secTree:"Domination",sec:[["Sudden Impact",""],[R.hunter[0][0],rnote(R.hunter[0],R.hunter[1])]],
+    shards:[["Adaptive Force",""],["Adaptive Force",""],[R.shard[0][0],rnote(R.shard[0],R.shard[1])]],
+    extra:"Minor runes are the usual Conqueror setup; OP.GG doesn't split them by keystone."};
+  return {key:"Electrocute",tree:"Domination",keyStat:"65.5% of Master+ mid games at 52.7%. Best into squishy lanes and burst-or-bust trades.",
+    prim:[[R.impact[0],rstat(R.impact)],[R.eye[0][0],rnote(R.eye[0],R.eye[1])],[R.hunter[0][0],rnote(R.hunter[0],R.hunter[1])]],
+    secTree:"Precision",sec:[[R.pom[0],rstat(R.pom)],cut?[R.last[1][0],rnote(R.last[1],R.last[0])]:[R.last[0][0],rstat(R.last[0])]],
+    shards:[["Adaptive Force",""],["Adaptive Force",""],[R.shard[0][0],rnote(R.shard[0],R.shard[1])]],
+    extra:cut?"Cut Down over Last Stand because their team has health to chew through.":"Cut Down (55.4%) replaces Last Stand into tanky teams; Ultimate Hunter keeps your teamfight ult up more often."};
+}
+
+function bans(role){return MATCH_M[role].map(([n])=>({n,...matchup(role,n)})).filter(r=>r.est<49.5).map(r=>({...r,impact:r.g*(50-r.est)})).sort((a,b)=>b.impact-a.impact).slice(0,5);}
+function extremes(role){const min=role==="jungle"?150:70;const rows=MATCH_M[role].filter(r=>r[2]>=min).map(([n])=>({n,...matchup(role,n)})).sort((a,b)=>a.est-b.est);return {worst:rows.slice(0,5),best:rows.slice(-5).reverse()};}
+
+function element(c){
+  if(has(c,"d")&&/[AF]/.test(c.cls))return ["river","River","the root stops their dashes. Land it before you ult."];
+  if(has(c,"p")||(isCls(c,"M")&&!has(c,"d")))return ["brush","Brush","walk up hidden; the field breaks their targeting."];
+  if(isCls(c,"K")||isCls(c,"E"))return ["rock","Rock","auto them under 50% first, then Rock Q finishes."];
+  if(isCls(c,"T")||has(c,"e"))return ["river","River","root their engage, then reposition."];
+  if(isCls(c,"F"))return ["river","River","root and kite instead of trading blows."];
+  return ["rock","Rock","bonus damage under 50% HP for the kill."];
+}
+function tags(c){
+  const t=[[dmgLabel(c)+" damage",""]];
+  if(has(c,"H"))t.push(["Big healing","hot"]);else if(has(c,"h"))t.push(["Healing",""]);
+  if(has(c,"S"))t.push([SELF_S.has(c.n)?"Big self shield":"Shields their carry","hot"]);else if(has(c,"s"))t.push(["Self shield",""]);
+  if(has(c,"u"))t.push(["Suppression","hot"]);
+  if(has(c,"q"))t.push(["Catch CC","hot"]);
+  const cc=cnt(c,"c");if(cc>=2)t.push(["Heavy CC",""]);else if(cc)t.push(["CC",""]);
+  if(has(c,"i"))t.push(["Stealth","hot"]);
+  if(has(c,"b"))t.push(["Burst",""]);
+  if(has(c,"k"))t.push(["Evasive",""]);
+  if(isCls(c,"T")||HPB.has(c.n))t.push(["Health stacker",""]);
+  if(has(c,"e"))t.push(["Engage",""]);
+  if(has(c,"p"))t.push(["Poke",""]);
+  if(has(c,"x"))t.push(["True damage",""]);
+  return t;
+}
+function compSummary(A){
+  if(!A.n)return "No enemies picked yet.";
+  const ap=Math.round(A.ap*100);
+  const dmg=ap>=60?`magic-heavy (${ap}% AP)`:ap<=35?`physical-heavy (${100-ap}% AD)`:`mixed damage (${ap}% AP)`;
+  const bits=[`${A.n===5?"Their team is":"So far they're"} ${dmg}`,`${A.squishy.length} squishy target${A.squishy.length===1?"":"s"}`];
+  if(A.hpList.length)bits.push(`${A.hpList.length} health stacker${A.hpList.length===1?"":"s"}`);
+  if(A.realShield.length)bits.push(`${A.realShield.length} real shielder${A.realShield.length===1?"":"s"}`);
+  bits.push(`${A.ccLevel.toLowerCase()} CC`);
+  return bits.join(", ")+".";
+}
+function sequence(role,P){return role==="jungle"?[P.core[0],P.core[1],"boots",P.core[2],...P.late]:[P.core[0],"boots",P.core[1],P.core[2],...P.late];}
+function buildText(role,state,team,P,R){
+  const S=STATS[role];
+  const vs=team.length?team.map(t=>t.c.n).join(", "):"any comp";
+  const seq=sequence(role,P).map(k=>k==="boots"?BOOTS[P.boots].n:nm(k));
+  return `Qiyana ${S.label} vs ${vs} (patch 26.20, ${state}) | ${P.path.name} route\n`+
+    `Runes: ${R.key}, ${R.prim.map(r=>r[0]).join(", ")} | ${R.sec.map(r=>r[0]).join(", ")} | ${R.shards.map(s=>s[0]).join(", ")}\n`+
+    `Start: ${P.start.n} | ${S.spells.a} + ${S.spells.b} | Skills ${S.skill.seq.slice(0,6).split("").join(" ")}, max Q > W > E\n`+
+    `Build: ${seq.join(" > ")}`;
+}
+</script>
+<script>
+/* ===== UI ===== */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pct=x=>x==null||isNaN(x)?"–":(+x).toFixed(1)+"%";
+const SHORT={top:"Top",jungle:"Jg",mid:"Mid",bot:"Bot",support:"Sup"};
+const KEY="qiyana-counterbuild.v2";
+const ST={role:"jungle",state:"even",enemies:{...EXAMPLE},example:true,pin:{jungle:null,mid:null}};
+
+function load(){
+  try{
+    const s=JSON.parse(localStorage.getItem(KEY)||"null");
+    if(!s||typeof s!=="object")return;
+    if(s.role==="jungle"||s.role==="mid")ST.role=s.role;
+    if(["behind","even","ahead"].includes(s.state))ST.state=s.state;
+    if(s.enemies&&typeof s.enemies==="object"){
+      ST.enemies={};const seen=new Set();
+      for(const sl of SLOTS){const v=s.enemies[sl.k];if(typeof v==="string"&&BY[v]&&!seen.has(v)){ST.enemies[sl.k]=v;seen.add(v);}}
+    }
+    ST.example=s.example===true;
+    if(s.pin&&typeof s.pin==="object")for(const r of ["jungle","mid"]){const p=s.pin[r];ST.pin[r]=typeof p==="string"&&PATHS[r].some(x=>x.id===p)?p:null;}
+  }catch(e){}
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(ST));}catch(e){}}
+
+function team(){return SLOTS.filter(s=>BY[ST.enemies[s.k]]).map(s=>({s,c:BY[ST.enemies[s.k]]}));}
+function compute(){
+  const role=ST.role,state=ST.state,T=team(),A=analyze(T),opp=BY[ST.enemies[role]]||null;
+  const P=plan(role,state,A,opp,ST.pin[role]),R=runes(role,A,opp);
+  return {role,state,T,A,opp,P,R};
+}
+function applyGeom(root){
+  for(const el of root.querySelectorAll("[data-w]"))el.style.width=el.dataset.w+"%";
+  for(const el of root.querySelectorAll("[data-left]"))el.style.left=el.dataset.left+"%";
+}
+const wrChip=(role,n)=>{const m=matchup(role,n);if(!m)return "";const v=verdict(m.est);return `<span class="wr ${v[1]}">${pct(m.src==="m"?m.wr:m.ewr)}<small>${m.src==="m"?fmt(m.g):"Em+"}</small></span>`;};
+
+/* ---------- draft column ---------- */
+function renderControls(){
+  for(const [g,val] of [["roleSeg",ST.role],["stateSeg",ST.state]])
+    for(const b of $(g).querySelectorAll("[role=radio]")){const on=b.dataset.v===val;b.setAttribute("aria-checked",String(on));b.tabIndex=on?0:-1;}
+  const any=Object.keys(ST.enemies).length>0;
+  $("clearAll").textContent=any?"Clear all":"Load example";
+  $("exTag").hidden=!ST.example;
+}
+function renderSlots(C){
+  $("slots").innerHTML=SLOTS.map(s=>{
+    const c=BY[ST.enemies[s.k]],lane=s.k===C.role;
+    const you=lane?(C.role==="jungle"?"Your matchup":"Your lane"):"";
+    let meta=c?`${classLabel(c)} · ${dmgLabel(c)}`:lane?`${you}: tap to add`:"Tap to add";
+    if(c&&lane)meta=matchup(C.role,c.n)?you:`${you} · no data`;
+    return `<li><button type="button" class="slot${c?"":" empty"}${lane?" opp":""}" data-slot="${s.k}" aria-label="Enemy ${s.lbl}: ${c?esc(c.n):"empty"}${lane?`, ${you.toLowerCase()}`:""}. Tap to ${c?"change":"pick"}."><span class="pos">${SHORT[s.k]}</span><span class="who"><span class="nm">${c?esc(c.n):"Add champion"}</span><span class="meta">${meta}</span></span>${c&&lane?wrChip(C.role,c.n):""}</button></li>`;
+  }).join("");
+}
+function renderReadout({A}){
+  const el=$("readout");
+  if(!A.n){el.innerHTML=`<p class="note">Add enemies to see their damage split and threats.</p>`;return;}
+  const ap=Math.round(A.ap*100),ad=100-ap,chips=[];
+  const chip=(label,n,hot)=>chips.push(`<span class="chip${hot?" hot":""}">${label}${n!=null?` <b>${n}</b>`:""}</span>`);
+  chip("Squishy",A.squishy.length,false);
+  if(A.hpList.length)chip("Health stackers",A.hpList.length,A.hp>=2);
+  if(A.shielders.length)chip("Shields",A.shielders.length,A.sh>=3.5);
+  if(A.catchers.length)chip("Catch CC",A.catchers.length,A.catchers.length>=2);
+  if(A.healers.length)chip("Healing",A.healers.length,A.heal>=4);
+  if(A.supp.length)chip("Suppression",A.supp.length,true);
+  if(A.stealth.length)chip("Stealth",A.stealth.length,true);
+  chip(`${A.ccLevel} CC`,null,A.cc>=10);
+  el.innerHTML=`<p class="vh">${esc(compSummary(A))}</p><div class="split" aria-hidden="true"><span class="ad" data-w="${ad}"></span><span class="ap" data-w="${ap}"></span></div><div class="splitlbl"><span class="a"><b>${ad}%</b> physical</span><span class="p"><b>${ap}%</b> magic</span></div><div class="counts">${chips.join("")}</div>`;
+  applyGeom(el);
+}
+
+/* ---------- build card ---------- */
+const CTR=new Set(["serpent","ldr","maw","mercurial","chempunk"]);
+function badgeFor(k,P,A){
+  if(k==="boots")return P.boots==="mercury"||P.boots==="steel"?["ctr","Counter"]:["","Boots"];
+  if(P.core.includes(k))return k==="eon"&&P.mod?["ctr","Moved up"]:["core","Core"];
+  const ctr=CTR.has(k)||(k==="eon"&&A.catchers.length)||(k==="dd"&&A.burstAD.length)||(k==="endless"&&A.cc>=10);
+  return ctr?["ctr","Counter"]:["","Late"];
+}
+function renderBuild(C){
+  const {role,A,P}=C,p=P.path;
+  const stat=p.g?`${p.wr.toFixed(1)}% over ${fmt(p.g)} Master+ games`:"Pro route";
+  $("pathname").innerHTML=`<b>${esc(p.name)}</b><span>${stat}</span>${P.mod?`<span>· ${esc(P.mod)}</span>`:""}${P.pinned?`<button type="button" class="link" data-act="unpin">Back to auto</button>`:""}`;
+  $("lede").textContent=P.lede;
+  $("chain").innerHTML=sequence(role,P).map((k,i)=>{
+    const boot=k==="boots",it=boot?BOOTS[P.boots]:ITEMS[k],[bc,bt]=badgeFor(k,P,A);
+    return `<li><span class="num">${i+1}</span><span class="glyph ${boot?"k-boot":"k-"+it.k}" aria-hidden="true">${it.ab}</span><div><div class="iname"><b>${esc(it.n)}</b><span class="badge ${bc}">${bt}</span></div><p class="why">${P.why[k]||esc(it.d)}</p></div></li>`;
+  }).join("");
+  $("early").innerHTML=P.early.map(t=>`<p>${t}</p>`).join("");
+}
+function renderPaths(C){
+  const {role,P}=C;
+  $("paths").innerHTML=PATHS[role].map(p=>{
+    const on=p.id===P.pid,pinned=ST.pin[role]===p.id;
+    const tag=pinned?"Pinned":p.id===P.auto?"This comp":"";
+    const wr=p.g?`<span class="wr">${p.wr.toFixed(1)}%<small>${fmt(p.g)} games</small></span>`:`<span class="wr"><small>pro route</small></span>`;
+    return `<li class="${on?"on":""}"><button type="button" class="pbtn" data-pid="${p.id}" aria-pressed="${pinned}"><span class="pn">${esc(p.name)}${tag?`<small>${tag}</small>`:""}</span>${wr}<span class="seq">${p.i.map(nm).join(" → ")}</span><span class="when">${esc(p.when)}${p.pro?` <i>${esc(p.pro)}.</i>`:""}</span></button></li>`;
+  }).join("");
+}
+function renderSwaps({A,P}){
+  const el=$("swaps");
+  if(!A.n){el.innerHTML=`<li class="note">Pick enemies to see what this comp changes.</li>`;return;}
+  if(!P.swaps.length){el.innerHTML=`<li class="note">Nothing in this comp forces a swap. Play the route above.</li>`;return;}
+  el.innerHTML=P.swaps.map(s=>`<li><span class="dot k-${s.k}" aria-hidden="true"></span><div><b>${esc(s.title)}</b>${s.built?` <span class="badge ctr">In your build</span>`:""}<p>${s.text}</p></div></li>`).join("");
+}
+function renderRunes({R}){
+  const row=(r,key)=>`<div class="rune${key?" key":""}"><span>${r[0]}</span>${r[1]?`<small>${r[1]}</small>`:""}</div>`;
+  $("runes").innerHTML=`<div class="rtree"><div class="tname">${R.tree}</div>${row([R.key,""],true)}${R.prim.map(r=>row(r)).join("")}</div>`+
+    `<div class="rtree"><div class="tname">${R.secTree}</div>${R.sec.map(r=>row(r)).join("")}</div>`+
+    `<div class="rtree"><div class="tname">Shards</div>${R.shards.map(r=>row(r)).join("")}</div>`+
+    `<p class="rnote">${R.keyStat}</p><p class="rnote">${R.extra}</p>`;
+}
+function renderKit({role,P}){
+  const S=STATS[role],jg=role==="jungle";
+  const grid=S.skill.seq.split("").map(k=>`<span class="${k}">${k}</span>`).join("");
+  $("kit").innerHTML=`<dl class="kv">`+
+    `<dt>Start</dt><dd>${esc(P.start.n)}<small>${esc(P.start.why)}</small></dd>`+
+    `<dt>Spells</dt><dd>${S.spells.a} + ${S.spells.b}<small>${pct(S.spells.pr)} of Master+ games, ${pct(S.spells.wr)} win</small></dd>`+
+    `<dt>Trinket</dt><dd>${jg?"Stealth Ward, then Oracle Lens on your first back":"Stealth Ward, then Oracle Lens once you start roaming"}<small>${jg?"7 of the last 10 pro Qiyana games ended on Oracle Lens.":"Clear their wards on your roam paths so you arrive unseen."}</small></dd>`+
+    `<dt>Skills</dt><dd>Max Q, then W, then E${jg?"":". Level W first"}<div class="skills" role="img" aria-label="Most common order: ${S.skill.seq.split("").join(" ")}">${grid}</div><small>Most common order: ${pct(S.skill.pr)} of Master+ games, ${pct(S.skill.wr)} win.${jg?" Rank R at 11 and 16 when you can.":""}</small></dd>`+
+    `</dl>`;
+}
+
+/* ---------- enemy read and matchup ---------- */
+function renderEnemies({T,role}){
+  const el=$("enemies");
+  if(!T.length){el.innerHTML=`<p class="note">Pick enemies to see what each one changes.</p>`;return;}
+  el.innerHTML=T.map(({s,c})=>{
+    const [ek,el2,et]=element(c),tip=TIPS[c.n];
+    return `<div class="erow"><div class="ehead"><b>${esc(c.n)}</b><span class="pos">${s.lbl} · ${classLabel(c)}</span>${s.k===role?wrChip(role,c.n):""}</div>`+
+      `<div class="etags">${tags(c).map(([t,h])=>`<span class="chip${h?" "+h:""}">${t}</span>`).join("")}</div>`+
+      `<div class="elem e-${ek}"><i aria-hidden="true"></i><span><b>${el2} Q:</b> ${et}</span></div>`+
+      `${tip?`<p class="etip">${tip}</p>`:""}</div>`;
+  }).join("");
+}
+function renderMatchup({role,opp,T}){
+  const who=role==="jungle"?"jungler":"mid laner";
+  let lane;
+  if(!opp)lane=`<div class="lane"><p class="lnote">Pick the enemy ${who} to see your matchup numbers.</p></div>`;
+  else{
+    const m=matchup(role,opp.n);
+    if(!m)lane=`<div class="lane"><div class="row"><span class="big even">–</span><span class="verdict even">No data</span></div><p class="lnote">No Master+ or Emerald+ Qiyana ${role} games against ${esc(opp.n)} this patch. Treat it as even and play to your build.</p></div>`;
+    else{
+      const v=verdict(m.est),shown=m.src==="m"?m.wr:m.ewr,pos=Math.max(0,Math.min(100,(m.est-40)*5));
+      const notes=[];
+      if(m.src==="m"){
+        notes.push(`${fmt(m.g)} Master+ games.`);
+        if(m.ewr!=null)notes.push(`Emerald+: ${pct(m.ewr)} over ${fmt(m.eg)}.`);
+        if(m.g<150)notes.push(`Small sample, so the verdict uses ${pct(m.est)}, blended toward the Emerald+ number.`);
+      }else notes.push(`No Master+ games this patch. Emerald+ has ${fmt(m.eg)}; the verdict uses ${pct(m.est)}, pulled toward 50%.`);
+      lane=`<div class="lane"><div class="row"><span class="big ${v[1]}">${pct(shown)}</span><span class="verdict ${v[1]}">${v[0]}</span><span class="muted">vs ${esc(opp.n)} ${m.src==="m"?"in Master+":"in Emerald+"}</span></div>`+
+        `<div class="meter" role="img" aria-label="Estimated win rate ${pct(m.est)}"><span class="mid"></span><span class="pin" data-left="${pos}"></span></div>`+
+        `<div class="mscale" aria-hidden="true"><span>40%</span><span>50%</span><span>60%</span></div><p class="lnote">${notes.join(" ")}</p></div>`;
+    }
+  }
+  const inGame=new Set(T.map(t=>t.c.n));
+  const list=(title,rows)=>`<div class="mlist"><h3>${title}</h3><ol>${rows.map(r=>`<li class="${inGame.has(r.n)?"on":""}"><span>${esc(r.n)}</span><span class="wr">${pct(r.est)}<small>${fmt(r.g)}</small></span></li>`).join("")}</ol></div>`;
+  const X=extremes(role),min=role==="jungle"?150:70;
+  $("matchup").innerHTML=lane+`<div class="mlists">${list("Ban priority",bans(role))}${list("Hardest",X.worst)}${list("Easiest",X.best)}</div>`+
+    `<p class="foot">Qiyana's estimated win rate against each enemy ${who}, with Master+ games played. The estimate is the Master+ number, pulled toward Emerald+ when games are few. Ban priority weighs how often you meet a champion by how far under 50% it goes; hardest and easiest need ${min}+ Master+ games.</p>`;
+  applyGeom($("matchup"));
+}
+
+/* ---------- combos, plan ---------- */
+const KEYLBL={F:"Flash",H:"Hydra",AA:"AA"};
+function renderCombos({role}){
+  $("combos").innerHTML=COMBOS.filter(c=>c.role==="both"||c.role===role).map(c=>{
+    const ks=c.k.split(" ");
+    return `<li><span class="cn">${c.n}</span><span class="keys" role="img" aria-label="${ks.map(k=>KEYLBL[k]||k).join(", ")}">${ks.map((k,i)=>`${i?'<span class="arr">›</span>':""}<span class="kbd${k==="R"?" R":""}">${KEYLBL[k]||k}</span>`).join("")}</span><p>${c.t}</p></li>`;
+  }).join("");
+}
+function planNotes({role,state,A,opp,P}){
+  const o=[],jg=role==="jungle",m=opp?matchup(role,opp.n):null;
+  const hasBB=P.core.includes("bastion")||P.late.includes("bastion");
+  if(jg){
+    o.push(`<b>Clear:</b> you start Raptors in 60% of blue-side and 74% of red-side games, and OP.GG's most-played full clear on both sides is Raptors → Red → Scuttle → Wolves → Blue → Gromp. Never double-Q a camp: Q, then W to refresh it, then Q again.`);
+    o.push(`<b>Level 3</b> gives you E, Q and W for the first gank. <b>Level 6</b> is your first real kill window, especially with Triple Tonic's Elixir of Force.`);
+  }else{
+    o.push(`<b>Lane:</b> Doran's Blade and W first. Take little damage at levels 1 and 2, then all-in at 3, weaving autos between abilities and using Ignite early.`);
+    o.push(`<b>Waves:</b> let the wave push in and bounce back around 3:15 so you can join the scuttle fight. When your jungler ganks, Audacity through minions to close the gap.`);
+  }
+  if(opp&&m){
+    const shown=pct(m.src==="m"?m.wr:m.ewr),src=m.src==="m"?"Master+":"Emerald+";
+    if(m.est>=52)o.push(`<b>${esc(opp.n)}</b> loses to you (${shown} in ${src}). ${jg?"Invade their buffs and contest every scuttle.":"Press levels 2 and 3 and deny their farm."}`);
+    else if(m.est<=48)o.push(`<b>${esc(opp.n)}</b> beats you head-to-head (${shown} in ${src}). ${jg?"Track them, play the side of the map they aren't on, and fight only next to your laners.":"Trade only when their key spell is down, and get ahead through roams instead of the lane."}`);
+    else o.push(`<b>${esc(opp.n)}</b> is an even matchup (${shown} in ${src}). ${jg?"Play for lane priority and fight where your laners can join.":"Win it with wave timing and roams, not a coin-flip all-in."}`);
+  }
+  if(jg)o.push(`<b>Pet quest:</b> Qiyana usually finishes it around 14:00. It upgrades Smite, adds move speed in the jungle and river, and boosts large-monster rewards.`);
+  else o.push(`<b>Mid quest:</b> finishing it upgrades your boots to ${BOOTS[P.boots].t3} for free and adds bonus AD. Shove, then roam through Brush Q's camouflage, and track both junglers.`);
+  o.push(`<b>Vision:</b> ${jg?"Oracle Lens from your first back":"Oracle Lens once you start roaming"}. She wins fights by flanking out of fog${A.stealth.length?`, and ${names(A.stealth)} use stealth, so carry a Control Ward`:""}.`);
+  o.push(`<b>Spikes:</b> fight when ${nm(P.core[0])} and ${nm(P.core[1])} complete. Your burst is a one-shot, not a duel, so skip fair 1v1s against a full-HP bruiser${A.tanks.length?` and leave ${names(A.tanks)} to your team`:""}.`);
+  if(state==="behind")o.push(`<b>Behind:</b> stop forcing plays into lanes that can't follow. Farm toward ${nm(P.core[1])}, ${jg?"counter-gank where their jungler shows":"match their mid's roams"}, and wait for someone to walk into fog alone.`);
+  if(state==="ahead")o.push(`<b>Ahead:</b> turn every kill into an objective${hasBB?" while Sabotage is up":""}, deny their jungle with Oracle Lens, and don't facecheck alone. Your bounty pays for their comeback.`);
+  o.push(`<b>Fights:</b> the river is your zone, since River Q roots and your ult also detonates water and brush. Take dragon fights, flank from fog and ult the highest-priority target. ${A.tanks.length?"Killing tanks isn't your job; their carries are.":"Their backline is squishy, so Flash-ult the fed one."}${A.evasive.length?` Bait out the defensive tools from ${names(A.evasive)} before you commit.`:""}`);
+  o.push(`<b>Objectives on 26.20:</b> Baron spawns at 20:00 and there's one set of Voidgrubs. Turret plates no longer fall off, inner and inhibitor turrets have them too, and melee champions deal 20% more damage to turrets.${hasBB?" After each takedown, Sabotage gives you 90 seconds to hit a tower, grubs, Herald, dragon or Baron for big true damage.":""}`);
+  if(hasBB)o.push(`<b>Close it out:</b> Bastionbreaker wins 58.8% in 25-minute games and 43.6% in 50-minute games (all champions). She falls off, so end before their carries outscale you.`);
+  return o;
+}
+function renderPlan(C){$("plan").innerHTML=planNotes(C).map(t=>`<li>${t}</li>`).join("");}
+
+/* ---------- numbers ---------- */
+function tbl(cap,head,rows){
+  return `<div class="tscroll"><table class="tbl"><caption>${cap}</caption><thead><tr>${head.map((h,i)=>`<th scope="col"${i?' class="n"':""}>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((c,i)=>`<td${i?' class="n"':""}>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+function renderNumbers({role}){
+  const S=STATS[role],R=RSTAT[role],out=[];
+  out.push(tbl(`${S.label} overview`,["","Master+","Emerald+"],[["Win rate",pct(S.wr),pct(S.ewr)],["Pick rate",pct(S.pr),pct(S.epr)],["Ban rate",pct(S.br),pct(S.ebr)],["Games",fmt(S.games),fmt(S.egames)]]));
+  out.push(tbl("Core paths, first three items",["Path","Pick","Games","Win"],S.cores.map(c=>[c.i.map(nm).join(" → "),pct(c.pr),fmt(c.g),pct(c.wr)])));
+  out.push(tbl("Items in any slot",["Item","Pick","Games","Win"],S.items.map(r=>[nm(r[0]),pct(r[1]),fmt(r[2]),pct(r[3])])));
+  for(const [k,l] of [["slot4","4th item"],["slot5","5th item"],["slot6","6th item"]])
+    if(S[k].length)out.push(tbl(l,["Item","Games","Win"],S[k].map(r=>[nm(r[0]),fmt(r[2]),pct(r[1])])));
+  out.push(tbl("Boots",["Boots","Pick","Games","Win"],S.boots.map(r=>[BOOTS[r[0]].n,pct(r[1]),fmt(r[2]),pct(r[3])])));
+  out.push(tbl("Starting items",["Start","Pick","Games","Win"],S.start.map(r=>[r[0],pct(r[1]),fmt(r[2]),pct(r[3])])));
+  out.push(tbl("Keystones",["Keystone","Pick","Games","Win"],S.keys.map(r=>[r[0],pct(r[2]),fmt(r[3]),pct(r[4])])));
+  const rr=[];
+  for(const [k,v] of Object.entries(R))for(const r of Array.isArray(v[0])?v:[v])rr.push([k==="shard"?`Shard: ${r[0]}`:r[0],pct(r[1]),fmt(r[2]),pct(r[3])]);
+  out.push(tbl("Minor runes",["Rune","Pick","Games","Win"],rr));
+  out.push(tbl("Lane opponents",["Enemy","Master+","Games","Emerald+","Estimate"],MATCH_M[role].map(([n,wr,g])=>{const e=ME[role][n];return [esc(n),pct(wr),fmt(g),e?pct(e.wr):"–",pct(matchup(role,n).est)];})));
+  out.push(`<p class="foot">OP.GG Master+ (all regions) and Emerald+ filters, patch 26.20 (game version 16.20), pulled October 19, 2026. A win rate reflects who picks an option as much as the option itself, so treat gaps under 2 points, or samples under about 300 games, as noise. The estimate blends Master+ with Emerald+ when Master+ games are few.</p>`);
+  $("numbers").innerHTML=out.join("");
+}
+
+/* ---------- static sections ---------- */
+function renderStatic(){
+  const J=STATS.jungle,M=STATS.mid;
+  $("benchline").innerHTML=`Built on <b>${fmt(J.games+M.games)} Master+ Qiyana games</b> from patch 26.20, where she wins <b>${pct(J.wr)} in jungle and ${pct(M.wr)} mid</b> (${pct(J.ewr)} and ${pct(M.ewr)} in Emerald+), plus 26.20 pro builds and Challenger-written guides.`;
+  $("benchIntro").textContent="VODs and full match histories weren't reviewed for this page, so it doesn't claim to copy any one player's build. It runs on the Master+ games these accounts are part of, the last 10 pro Qiyana jungle games on 26.20 (Spirit, Yike, Boukada, Jankos and Roach: First Strike in all 10, Bastionbreaker in 9, Voltaic in 8, Oracle Lens in 7) and Challenger-written guides. LoLalytics' Qiyana leaderboard (Diamond+ players over 50% with 50+ games) has 8 Challengers and 2 Grandmasters in its top 10, at 61% combined over about 1,440 games.";
+  $("bench").innerHTML=BENCH.map(b=>`<div><b>${esc(b.n)}</b><span>${esc(b.r)}</span><span class="wr">${pct(b.wr)} over ${fmt(b.g)} games</span><span>${esc(b.note)}</span></div>`).join("");
+  $("mech").innerHTML=MECH.map(t=>`<li>${t}</li>`).join("");
+  $("sources").innerHTML=`<h2>Sources</h2><ul>${SOURCES.map(([t,u])=>`<li><a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(t)}</a></li>`).join("")}</ul>`;
+}
+
+function render(){
+  const C=compute();
+  renderControls();renderSlots(C);renderReadout(C);renderBuild(C);renderPaths(C);renderSwaps(C);renderRunes(C);renderKit(C);
+  renderEnemies(C);renderMatchup(C);renderCombos(C);renderPlan(C);renderNumbers(C);
+  $("copyText").hidden=true;
+  save();
+}
+
+/* ---------- picker ---------- */
+let pickSlot=null,pickFilter="all",returnSlot=null;
+const CHIPS=[["all","All"],["T","Top"],["J","Jungle"],["M","Mid"],["B","Bot"],["S","Support"]];
+const norm=s=>s.toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g,"");
+function openPicker(k){
+  const sl=SLOTS.find(s=>s.k===k);if(!sl)return;
+  if($("picker").hidden)returnSlot=k;
+  pickSlot=k;pickFilter=sl.r;
+  $("pickTitle").textContent=`Enemy ${sl.lbl.toLowerCase()}`;
+  $("pickSearch").value="";
+  $("pickClear").hidden=!ST.enemies[k];
+  $("picker").hidden=false;
+  document.documentElement.style.overflow="hidden";
+  renderPicker();
+  $("pickList").scrollTop=0;
+  if(matchMedia("(hover:hover) and (pointer:fine)").matches)$("pickSearch").focus();else $("pickClose").focus();
+}
+function closePicker(){
+  $("picker").hidden=true;pickSlot=null;
+  document.documentElement.style.overflow="";
+  const b=returnSlot&&document.querySelector(`.slot[data-slot="${returnSlot}"]`);
+  if(b)b.focus();
+  returnSlot=null;
+}
+function renderPicker(){
+  const raw=$("pickSearch").value.trim(),q=norm(raw),alias=ALIASES[q]||null;
+  const taken=new Map(Object.entries(ST.enemies).filter(([k])=>k!==pickSlot).map(([k,v])=>[v,k]));
+  const lane=pickSlot===ST.role,cur=ST.enemies[pickSlot];
+  let list;
+  if(q){
+    const score=c=>{const n=norm(c.n);return c.n===alias?0:n.startsWith(q)?1:n.includes(q)?2:9;};
+    list=CHAMPS.filter(c=>score(c)<9).sort((a,b)=>score(a)-score(b)||a.n.localeCompare(b.n));
+  }else list=pickFilter==="all"?CHAMPS:CHAMPS.filter(c=>c.roles.includes(pickFilter));
+  $("pickChips").innerHTML=CHIPS.map(([v,l])=>`<button type="button" data-f="${v}" aria-pressed="${!q&&pickFilter===v}">${l}</button>`).join("");
+  if(!list.length){$("pickList").innerHTML=`<p class="pempty">No champion matches “${esc(raw)}”.</p>`;return;}
+  $("pickList").innerHTML=list.map(c=>{
+    const t=taken.get(c.n);
+    return `<button type="button" class="pitem${c.n===cur?" cur":""}" data-n="${esc(c.n)}"${t?" disabled":""}><span><span class="pn">${esc(c.n)}</span><span class="pm">${classLabel(c)} · ${dmgLabel(c)}${t?` · already their ${SLOTS.find(s=>s.k===t).lbl.toLowerCase()}`:""}</span></span>${lane?wrChip(ST.role,c.n):""}</button>`;
+  }).join("");
+}
+function pick(n){
+  if(!pickSlot||!BY[n])return;
+  ST.enemies[pickSlot]=n;ST.example=false;
+  const i=SLOTS.findIndex(s=>s.k===pickSlot);
+  const next=[...SLOTS.slice(i+1),...SLOTS.slice(0,i)].find(s=>!ST.enemies[s.k]);
+  render();
+  if(next){openPicker(next.k);toast(`${n} added`);}else closePicker();
+}
+
+/* ---------- copy, toast ---------- */
+let toastT;
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("on");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("on"),1800);}
+function copyBuild(){
+  const C=compute(),text=buildText(C.role,C.state,C.T,C.P,C.R);
+  const fallback=()=>{
+    const ta=$("copyText");ta.value=text;ta.hidden=false;ta.focus();ta.select();
+    let ok=false;try{ok=document.execCommand("copy");}catch(e){}
+    toast(ok?"Build copied":"Select the text below and copy it");
+  };
+  try{
+    if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(text).then(()=>toast("Build copied"),fallback);
+    else fallback();
+  }catch(e){fallback();}
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click",e=>{
+  const t=e.target;if(!(t instanceof Element))return;
+  const radio=t.closest("[role=radio]");
+  if(radio){const g=radio.parentElement.id;if(g==="roleSeg")ST.role=radio.dataset.v;else if(g==="stateSeg")ST.state=radio.dataset.v;render();return;}
+  const slot=t.closest(".slot");if(slot){openPicker(slot.dataset.slot);return;}
+  if(t.closest("#clearAll")){
+    if(Object.keys(ST.enemies).length){ST.enemies={};ST.example=false;toast("Enemy team cleared");}
+    else{ST.enemies={...EXAMPLE};ST.example=true;}
+    render();return;
+  }
+  if(t.closest("#copyBtn")){copyBuild();return;}
+  const pb=t.closest("[data-pid]");
+  if(pb){const id=pb.dataset.pid;ST.pin[ST.role]=ST.pin[ST.role]===id?null:id;render();toast(ST.pin[ST.role]?`${PATHBY[id].name} pinned`:"Back to auto");return;}
+  if(t.closest("[data-act=unpin]")){ST.pin[ST.role]=null;render();toast("Back to auto");return;}
+  if(t.closest("#pickClose")){closePicker();return;}
+  if(t.closest("#pickClear")){if(pickSlot){delete ST.enemies[pickSlot];ST.example=false;}render();closePicker();return;}
+  const f=t.closest("[data-f]");if(f){pickFilter=f.dataset.f;$("pickSearch").value="";renderPicker();return;}
+  const pi=t.closest(".pitem");if(pi&&!pi.disabled){pick(pi.dataset.n);return;}
+  if(t.id==="picker")closePicker();
+});
+document.addEventListener("keydown",e=>{
+  if(!$("picker").hidden){
+    if(e.key==="Escape"){e.preventDefault();closePicker();return;}
+    if(e.key==="Enter"&&e.target.id==="pickSearch"){e.preventDefault();const first=$("pickList").querySelector(".pitem:not([disabled])");if(first)pick(first.dataset.n);return;}
+    if(e.key==="Tab"){
+      const f=[...$("picker").querySelectorAll("button:not([disabled]),input")].filter(x=>!x.hidden&&x.offsetParent!==null);
+      if(!f.length)return;const a=f[0],z=f[f.length-1];
+      if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}
+      else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}
+    }
+    return;
+  }
+  const r=e.target instanceof Element&&e.target.closest("[role=radio]");
+  if(r&&["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)){
+    e.preventDefault();
+    const btns=[...r.parentElement.querySelectorAll("[role=radio]")],d=e.key==="ArrowLeft"||e.key==="ArrowUp"?-1:1;
+    const nb=btns[(btns.indexOf(r)+d+btns.length)%btns.length];
+    nb.click();nb.focus();
+  }
+});
+$("pickSearch").addEventListener("input",renderPicker);
+
+load();renderStatic();render();
+</script>
+<script>
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
+  addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
+</body>
+</html>
